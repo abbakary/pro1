@@ -158,10 +158,18 @@ def submission_list(request, exam_id: int):
         .order_by("driver__first_name", "driver__last_name")
     )
     submissions = {s.driver_id: s for s in Submission.objects.filter(exam=exam)}
+    rows = []
+    for d in distributions:
+        sub = submissions.get(d.driver_id)
+        rows.append({
+            "driver": d.driver,
+            "status": d.status,
+            "score": sub.score if sub else None,
+        })
     return render(
         request,
         "exams/submission_list.html",
-        {"exam": exam, "distributions": distributions, "submissions": submissions},
+        {"exam": exam, "rows": rows, "distributions": distributions},
     )
 
 
