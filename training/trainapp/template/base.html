@@ -316,6 +316,32 @@
                                     <i class="fa fa-thumb-tack"></i>
                                     <a class="sidebar-link sidebar-title" href="#">
                                         <svg class="stroke-icon">
+                                            <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-calendar"></use>
+                                        </svg>
+                                        <span>Timetable</span>
+                                    </a>
+                                    <ul class="sidebar-submenu">
+                                        <li><a href="{% url 'trainingapp:timetable_list' %}">All Entries</a></li>
+                                        <li><a href="{% url 'trainingapp:timetable_create' %}">Add Entry</a></li>
+                                    </ul>
+                                </li>
+                                <li class="sidebar-list">
+                                    <i class="fa fa-thumb-tack"></i>
+                                    <a class="sidebar-link sidebar-title" href="#">
+                                        <svg class="stroke-icon">
+                                            <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-email"></use>
+                                        </svg>
+                                        <span>Notifications</span>
+                                    </a>
+                                    <ul class="sidebar-submenu">
+                                        <li><a href="{% url 'trainingapp:notification_list' %}">All Notifications</a></li>
+                                        <li><a href="{% url 'trainingapp:notification_create' %}">Send Notification</a></li>
+                                    </ul>
+                                </li>
+                                <li class="sidebar-list">
+                                    <i class="fa fa-thumb-tack"></i>
+                                    <a class="sidebar-link sidebar-title" href="#">
+                                        <svg class="stroke-icon">
                                             <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-file"></use>
                                         </svg>
                                         <span>Exams</span>

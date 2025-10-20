@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import Driver, Batch, ExamPaper, Submission, TimetableEntry
+from .models import Driver, Batch, ExamPaper, Submission, TimetableEntry, Notification, NotificationResponse
 
 User = get_user_model()
 
@@ -40,4 +40,30 @@ class TimetableEntryForm(forms.ModelForm):
             "starts_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
             "ends_at": forms.DateTimeInput(attrs={"type": "datetime-local"}),
             "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+
+class NotificationForm(forms.ModelForm):
+    class Meta:
+        model = Notification
+        fields = ["title", "body", "attachment", "batch", "driver"]
+        widgets = {
+            "body": forms.Textarea(attrs={"rows": 4}),
+        }
+
+    def clean(self):
+        cleaned = super().clean()
+        batch = cleaned.get("batch")
+        driver = cleaned.get("driver")
+        if not batch and not driver:
+            raise forms.ValidationError("Select a Batch or a Driver to send notification.")
+        if batch and driver:
+            raise forms.ValidationError("Choose either Batch or Driver, not both.")
+        return cleaned
+
+class NotificationResponseForm(forms.ModelForm):
+    class Meta:
+        model = NotificationResponse
+        fields = ["message"]
+        widgets = {
+            "message": forms.Textarea(attrs={"rows": 3, "placeholder": "Write your response..."}),
         }

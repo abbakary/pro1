@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Notification Details{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6"><h4>{{ notification.title }}</h4></div>
+      <div class="col-6 text-end"><a class="btn btn-outline-secondary" href="{% url 'trainingapp:notification_list' %}">Back</a></div>
+    </div>
+  </div>
+  <div class="row g-3">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header pb-0"><h5 class="mb-0">Message</h5></div>
+        <div class="card-body">
+          <p class="mb-2">{{ notification.body|linebreaks }}</p>
+          <div class="d-flex gap-3 flex-wrap">
+            <div><strong>Target:</strong> {{ notification.target_display }}</div>
+            <div><strong>Sent:</strong> {{ notification.created_at }}</div>
+            <div><strong>Attachment:</strong> {% if notification.attachment %}<a href="{{ notification.attachment.url }}" target="_blank">Open</a>{% else %}-{% endif %}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header pb-0"><h5 class="mb-0">Receipts & Responses</h5></div>
+        <div class="card-body" style="max-height:70vh; overflow:auto;">
+          {% for r in receipts %}
+            <div class="border rounded p-2 mb-2">
+              <div class="d-flex justify-content-between">
+                <div><strong>{{ r.driver.first_name }} {{ r.driver.last_name }}</strong></div>
+                <div>{% if r.is_read %}<span class="badge bg-success">Read</span>{% else %}<span class="badge bg-secondary">Unread</span>{% endif %}</div>
+              </div>
+              {% if r.responses.all %}
+                <div class="mt-2">
+                  {% for res in r.responses.all %}
+                    <div class="p-2 bg-light rounded mb-2">
+                      <div class="small text-muted">{{ res.created_at }}</div>
+                      <div>{{ res.message|linebreaksbr }}</div>
+                    </div>
+                  {% empty %}
+                    <div class="text-muted small">No response</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          {% empty %}
+            <div class="text-center text-muted">No recipients.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

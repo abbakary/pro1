@@ -14,7 +14,7 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Title</th><th>Batch</th><th>Total Marks</th><th>Uploaded</th><th>Actions</th>
+              <th>Title</th><th>Batch</th><th>Total Marks</th><th>Document</th><th>Uploaded</th><th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -23,8 +23,14 @@
               <td>{{ e.title }}</td>
               <td>{{ e.batch|default:"-" }}</td>
               <td>{{ e.total_marks }}</td>
-              <td>{{ e.created_at }}</td>
               <td>
+                {% if e.file %}
+                  <a href="{{ e.file.url }}" target="_blank">{{ e.file.name|cut:"exam_papers/" }}</a>
+                {% else %}-{% endif %}
+              </td>
+              <td>{{ e.created_at }}</td>
+              <td class="d-flex gap-1">
+                <a class="btn btn-sm btn-outline-info" href="{% url 'trainingapp:exam_view' e.id %}" target="_blank">View</a>
                 {% if e.batch %}
                   <a class="btn btn-sm btn-outline-primary" href="{% url 'trainingapp:exam_distribute' e.id %}">Distribute</a>
                   <a class="btn btn-sm btn-outline-secondary" href="{% url 'trainingapp:submission_list' e.id %}">Submissions</a>
@@ -34,7 +40,7 @@
               </td>
             </tr>
           {% empty %}
-            <tr><td colspan="5" class="text-center">No exams yet.</td></tr>
+            <tr><td colspan="6" class="text-center">No exams yet.</td></tr>
           {% endfor %}
           </tbody>
         </table>

@@ -2,13 +2,13 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import BatchForm, DriverForm, ExamUploadForm, ScoreForm, TimetableEntryForm
-from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Submission, TimetableEntry
+from .forms import BatchForm, DriverForm, ExamUploadForm, ScoreForm, TimetableEntryForm, NotificationForm, NotificationResponseForm
+from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Submission, TimetableEntry, Notification, NotificationReceipt
 
 
 
@@ -16,17 +16,48 @@ from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Su
 def dashboard(request):
     if not request.user.is_staff and hasattr(request.user, 'driver_profile') and request.user.driver_profile:
         return redirect('trainingapp:driver_portal')
+
+    now = timezone.now()
+    first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
     drivers_count = Driver.objects.count()
     batch_count = Batch.objects.count()
     exams_count = ExamPaper.objects.count()
     scored_count = Submission.objects.exclude(score__isnull=True).count()
-    context = {
-        "drivers_count": drivers_count,
-        "batch_count": batch_count,
-        "exams_count": exams_count,
-        "scored_count": scored_count,
+    new_drivers_this_month = Driver.objects.filter(created_at__gte=first_of_month).count()
+
+    status_counts_qs = ExamDistribution.objects.values('status').annotate(c=Count('id'))
+    status_counts = {row['status']: row['c'] for row in status_counts_qs}
+    status_counts = {
+        'assigned': status_counts.get('assigned', 0),
+        'completed': status_counts.get('completed', 0),
+        'scored': status_counts.get('scored', 0),
     }
-    return render(request, "dashboard-02.html", context)
+
+    top_batches = (
+        Batch.objects.annotate(exams_count=Count('exams'))
+        .order_by('-exams_count', 'name')[:5]
+    )
+    batch_labels = [b.name for b in top_batches]
+    batch_exam_counts = [b.exams_count for b in top_batches]
+
+    upcoming_total = TimetableEntry.objects.filter(starts_at__gte=now).count()
+    recent_exams = ExamPaper.objects.select_related('batch').order_by('-created_at')[:5]
+
+    context = {
+        'drivers_count': drivers_count,
+        'batch_count': batch_count,
+        'exams_count': exams_count,
+        'scored_count': scored_count,
+        'new_drivers_this_month': new_drivers_this_month,
+        'status_counts': status_counts,
+        'batch_labels': batch_labels,
+        'batch_exam_counts': batch_exam_counts,
+        'upcoming_total': upcoming_total,
+        'recent_exams': recent_exams,
+        'now_time': now,
+    }
+    return render(request, 'dashboard-02.html', context)
 
 
 
@@ -85,6 +116,101 @@ def batch_list(request):
     batches = Batch.objects.order_by("-created_at")
     return render(request, "batches/batch_list.html", {"batches": batches})
 
+
+
+@staff_member_required
+def timetable_list(request):
+    entries = (
+        TimetableEntry.objects.select_related('batch', 'driver')
+        .order_by('-starts_at')
+    )
+    return render(request, 'timetable/timetable_list.html', {"entries": entries})
+
+
+@staff_member_required
+def timetable_create(request):
+    if request.method == 'POST':
+        form = TimetableEntryForm(request.POST)
+        if form.is_valid():
+            t = form.save(commit=False)
+            t.created_by = request.user
+            t.save()
+            AuditHistory.objects.create(
+                action="create_timetable",
+                entity_type="TimetableEntry",
+                entity_id=str(t.id),
+                user=request.user,
+                details={"title": t.title},
+            )
+            messages.success(request, "Timetable entry created")
+            return redirect('trainingapp:timetable_list')
+    else:
+        form = TimetableEntryForm()
+    return render(request, 'timetable/timetable_form.html', {"form": form, "title": "Add Timetable Entry"})
+
+
+@staff_member_required
+def notification_list(request):
+    items = Notification.objects.order_by('-created_at')
+    return render(request, 'notifications/notification_list.html', {"items": items})
+
+
+@staff_member_required
+def notification_create(request):
+    if request.method == 'POST':
+        form = NotificationForm(request.POST, request.FILES)
+        if form.is_valid():
+            notif = form.save(commit=False)
+            notif.created_by = request.user
+            notif.save()
+            created = 0
+            if notif.driver:
+                NotificationReceipt.objects.get_or_create(notification=notif, driver=notif.driver)
+                created = 1
+            elif notif.batch:
+                for d in Driver.objects.filter(batch=notif.batch):
+                    NotificationReceipt.objects.get_or_create(notification=notif, driver=d)
+                    created += 1
+            AuditHistory.objects.create(
+                action="create_notification",
+                entity_type="Notification",
+                entity_id=str(notif.id),
+                user=request.user,
+                details={"title": notif.title, "recipients": created},
+            )
+            messages.success(request, f"Notification sent to {created} driver(s)")
+            return redirect('trainingapp:notification_list')
+    else:
+        form = NotificationForm()
+    return render(request, 'notifications/notification_form.html', {"form": form, "title": "Send Notification"})
+
+
+@staff_member_required
+def notification_detail(request, pk: int):
+    notif = get_object_or_404(Notification, pk=pk)
+    receipts = (
+        NotificationReceipt.objects.filter(notification=notif)
+        .select_related('driver')
+        .order_by('-created_at')
+    )
+    return render(request, 'notifications/notification_detail.html', {"notification": notif, "receipts": receipts})
+
+
+@login_required
+def notification_respond(request, receipt_id: int):
+    driver = getattr(request.user, 'driver_profile', None)
+    receipt = get_object_or_404(NotificationReceipt, pk=receipt_id)
+    if driver is None or receipt.driver_id != driver.id:
+        raise Http404("Not allowed")
+    if request.method == 'POST':
+        form = NotificationResponseForm(request.POST)
+        if form.is_valid():
+            resp = form.save(commit=False)
+            resp.receipt = receipt
+            resp.save()
+            messages.success(request, "Response sent")
+            return redirect('trainingapp:driver_portal')
+    return redirect('trainingapp:driver_portal')
 
 
 @staff_member_required
@@ -166,25 +292,96 @@ def exam_distribute(request, pk: int):
 @staff_member_required
 def submission_list(request, exam_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
-    distributions = (
-        ExamDistribution.objects.filter(exam=exam)
-        .select_related("driver")
-        .order_by("driver__first_name", "driver__last_name")
-    )
-    submissions = {s.driver_id: s for s in Submission.objects.filter(exam=exam)}
+
+    q = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+    min_score = request.GET.get('min_score', '').strip()
+    max_score = request.GET.get('max_score', '').strip()
+
+    base_qs = ExamDistribution.objects.filter(exam=exam).select_related('driver')
+    if q:
+        base_qs = base_qs.filter(Q(driver__first_name__icontains=q) | Q(driver__last_name__icontains=q) | Q(driver__license_no__icontains=q))
+    if status:
+        base_qs = base_qs.filter(status=status)
+
+    score_filtered = False
+    if min_score or max_score:
+        score_filtered = True
+        if min_score:
+            base_qs = base_qs.filter(driver__submissions__exam=exam, driver__submissions__score__gte=min_score)
+        if max_score:
+            base_qs = base_qs.filter(driver__submissions__exam=exam, driver__submissions__score__lte=max_score)
+
+    distributions = base_qs.order_by('driver__first_name', 'driver__last_name')
+
+    submissions_map = {s.driver_id: s for s in Submission.objects.filter(exam=exam)}
     rows = []
     for d in distributions:
-        sub = submissions.get(d.driver_id)
+        sub = submissions_map.get(d.driver_id)
+        if score_filtered and sub is None:
+            continue
         rows.append({
-            "driver": d.driver,
-            "status": d.status,
-            "score": sub.score if sub else None,
+            'driver': d.driver,
+            'status': d.status,
+            'score': sub.score if sub else None,
         })
-    return render(
-        request,
-        "exams/submission_list.html",
-        {"exam": exam, "rows": rows, "distributions": distributions},
-    )
+
+    ctx = {
+        'exam': exam,
+        'rows': rows,
+        'q': q,
+        'status': status,
+        'min_score': min_score,
+        'max_score': max_score,
+    }
+    return render(request, 'exams/submission_list.html', ctx)
+
+
+@staff_member_required
+def exam_results_print(request, exam_id: int):
+    exam = get_object_or_404(ExamPaper, pk=exam_id)
+    driver_id = request.GET.get('driver_id')
+
+    q = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+    min_score = request.GET.get('min_score', '').strip()
+    max_score = request.GET.get('max_score', '').strip()
+
+    base_qs = ExamDistribution.objects.filter(exam=exam).select_related('driver')
+    if driver_id:
+        base_qs = base_qs.filter(driver_id=driver_id)
+    if q:
+        base_qs = base_qs.filter(Q(driver__first_name__icontains=q) | Q(driver__last_name__icontains=q) | Q(driver__license_no__icontains=q))
+    if status:
+        base_qs = base_qs.filter(status=status)
+
+    score_filtered = False
+    if min_score or max_score:
+        score_filtered = True
+        if min_score:
+            base_qs = base_qs.filter(driver__submissions__exam=exam, driver__submissions__score__gte=min_score)
+        if max_score:
+            base_qs = base_qs.filter(driver__submissions__exam=exam, driver__submissions__score__lte=max_score)
+
+    distributions = base_qs.order_by('driver__first_name', 'driver__last_name')
+
+    submissions_map = {s.driver_id: s for s in Submission.objects.filter(exam=exam)}
+    rows = []
+    for d in distributions:
+        sub = submissions_map.get(d.driver_id)
+        if score_filtered and sub is None:
+            continue
+        rows.append({
+            'driver': d.driver,
+            'status': d.status,
+            'score': sub.score if sub else None,
+        })
+
+    return render(request, 'exams/results_print.html', {
+        'exam': exam,
+        'rows': rows,
+        'single_driver': Driver.objects.filter(pk=driver_id).first() if driver_id else None,
+    })
 
 
 
@@ -224,6 +421,14 @@ def score_submission(request, exam_id: int, driver_id: int):
         {"form": form, "exam": exam, "driver": driver},
     )
 
+
+
+@staff_member_required
+def exam_view(request, exam_id: int):
+    exam = get_object_or_404(ExamPaper, pk=exam_id)
+    file_url = exam.file.url if exam.file else ""
+    is_pdf = file_url.lower().endswith(".pdf")
+    return render(request, "exams/exam_view.html", {"exam": exam, "is_pdf": is_pdf})
 
 
 @staff_member_required
@@ -271,8 +476,17 @@ def driver_portal(request):
         .order_by('starts_at')[:10]
     )
 
+    receipts = (
+        NotificationReceipt.objects.filter(driver=driver)
+        .select_related('notification')
+        .order_by('-created_at')
+    )
+    NotificationReceipt.objects.filter(driver=driver, is_read=False).update(is_read=True)
+
     return render(request, 'drivers/driver_portal.html', {
         'driver': driver,
         'progress_rows': progress_rows,
         'upcoming': upcoming,
+        'receipts': receipts,
+        'response_form': NotificationResponseForm(),
     })
