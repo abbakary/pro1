@@ -10,6 +10,7 @@ urlpatterns = [
     path('drivers/', views.driver_list, name='driver_list'),
     path('drivers/new/', views.driver_create, name='driver_create'),
     path('drivers/<int:pk>/edit/', views.driver_edit, name='driver_edit'),
+    path('driver/me/', views.driver_portal, name='driver_portal'),
 
     # Batches
     path('batches/', views.batch_list, name='batch_list'),
