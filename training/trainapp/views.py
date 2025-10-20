@@ -5,8 +5,8 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import BatchForm, DriverForm, ExamUploadForm, ScoreForm
-from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Submission
+from .forms import BatchForm, DriverForm, ExamUploadForm, ScoreForm, TimetableEntryForm
+from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Submission, TimetableEntry
 
 
 
