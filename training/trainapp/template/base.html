@@ -209,7 +209,7 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <form action="{% url 'tracker:logout' %}" method="post" style="display: inline;">
+                                    <form action="{% url 'logout' %}" method="post" style="display: inline;">
                                         {% csrf_token %}
                                         <button type="submit" style="background: none; border: none; color: inherit; text-decoration: none; cursor: pointer; width: 100%; text-align: left; padding: 0;">
                                             <i data-feather="log-out"></i>
