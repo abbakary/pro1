@@ -285,6 +285,7 @@
                                         <span>My Portal</span>
                                     </a>
                                 </li>
+                                {% if user.is_staff or user.is_superuser %}
                                 <li class="sidebar-list">
                                     <i class="fa fa-thumb-tack"></i>
                                     <a class="sidebar-link sidebar-title" href="#">
