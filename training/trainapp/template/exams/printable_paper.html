@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ exam.title }} - {{ driver.first_name }} {{ driver.last_name }}</title>
+  <link rel="stylesheet" href="{% static 'assets/css/vendors/bootstrap.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+  <link id="color" rel="stylesheet" href="{% static 'assets/css/color-1.css' %}" media="screen">
+  <style>
+    .paper-container{position:relative;}
+    .score-badge{position:absolute; top:16px; right:16px; background:#0d6efd; color:#fff; padding:6px 10px; border-radius:6px; font-weight:600}
+    .driver-badge{position:absolute; bottom:16px; right:16px; background:#198754; color:#fff; padding:6px 10px; border-radius:6px; font-weight:600}
+    @media print { .no-print{ display:none !important;} body{background:#fff;} }
+  </style>
+</head>
+<body>
+<div class="container my-3">
+  <div class="d-flex justify-content-between align-items-center no-print">
+    <h5 class="mb-0">Printable Exam Paper</h5>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary" href="javascript:window.print()">Print / Save as PDF</a>
+      <a class="btn btn-outline-primary" href="{% url 'trainingapp:submission_list' exam.id %}">Back</a>
+    </div>
+  </div>
+  <hr class="no-print">
+  <div class="paper-container">
+    {% if exam.file.url|lower|endswith:'.pdf' %}
+      <embed src="{{ exam.file.url }}" type="application/pdf" width="100%" height="900px" />
+    {% else %}
+      <img src="{{ exam.file.url }}" alt="Exam Paper" class="img-fluid w-100"/>
+    {% endif %}
+    {% if submission and submission.score %}
+      <div class="score-badge">Score: {{ submission.score }}/{{ exam.total_marks }}</div>
+    {% else %}
+      <div class="score-badge">Score: — / {{ exam.total_marks }}</div>
+    {% endif %}
+    <div class="driver-badge">{{ driver.first_name }} {{ driver.last_name }}</div>
+  </div>
+</div>
+</body>
+</html>
