@@ -184,8 +184,8 @@
                         <!-- Profile -->
                         <li class="profile-nav onhover-dropdown">
                             <div class="media profile-media">
-                                {% if user.profile.photo %}
-                                    <img class="b-r-10" src="{{ user.profile.photo.url }}" alt="{{ user.get_full_name|default:user.username }}">
+                                {% if user.driver_profile and user.driver_profile.profile_photo %}
+                                    <img class="b-r-10" src="{{ user.driver_profile.profile_photo.url }}" alt="{{ user.get_full_name|default:user.username }}">
                                 {% else %}
                                     <div class="avatar-placeholder b-r-10" style="width: 40px; height: 40px; background-color: #f0f0f0; border-radius: 5px; display: flex; align-items: center; justify-content: center;">
                                         <span style="font-size: 18px;">{{ user.get_full_name|default:user.username|first|upper }}</span>
@@ -209,7 +209,7 @@
                                     </a>
                                 </li>
                                 <li>
-                                    <form action="{% url 'tracker:logout' %}" method="post" style="display: inline;">
+                                    <form action="{% url 'logout' %}" method="post" style="display: inline;">
                                         {% csrf_token %}
                                         <button type="submit" style="background: none; border: none; color: inherit; text-decoration: none; cursor: pointer; width: 100%; text-align: left; padding: 0;">
                                             <i data-feather="log-out"></i>
@@ -278,6 +278,16 @@
                                 </li>
                                 <li class="sidebar-list">
                                     <i class="fa fa-thumb-tack"></i>
+                                    <a class="sidebar-link sidebar-title" href="{% url 'trainingapp:driver_portal' %}">
+                                        <svg class="stroke-icon">
+                                            <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-user"></use>
+                                        </svg>
+                                        <span>My Portal</span>
+                                    </a>
+                                </li>
+                                {% if user.is_staff or user.is_superuser %}
+                                <li class="sidebar-list">
+                                    <i class="fa fa-thumb-tack"></i>
                                     <a class="sidebar-link sidebar-title" href="#">
                                         <svg class="stroke-icon">
                                             <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-user"></use>
@@ -327,6 +337,7 @@
                                         <li><a href="{% url 'trainingapp:exam_list' %}">Results</a></li>
                                     </ul>
                                 </li>
+                                {% endif %}
                             </ul>
                         </div>
                         <div class="right-arrow" id="right-arrow">

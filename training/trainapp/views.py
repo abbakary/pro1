@@ -1,6 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
+from django.db.models import Q
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -10,7 +12,10 @@ from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Su
 
 
 
+@login_required
 def dashboard(request):
+    if not request.user.is_staff and hasattr(request.user, 'driver_profile') and request.user.driver_profile:
+        return redirect('trainingapp:driver_portal')
     drivers_count = Driver.objects.count()
     batch_count = Batch.objects.count()
     exams_count = ExamPaper.objects.count()
@@ -25,15 +30,17 @@ def dashboard(request):
 
 
 
+@staff_member_required
 def driver_list(request):
     drivers = Driver.objects.select_related("batch").order_by("-created_at")
     return render(request, "drivers/driver_list.html", {"drivers": drivers})
 
 
 
+@staff_member_required
 def driver_create(request):
     if request.method == "POST":
-        form = DriverForm(request.POST)
+        form = DriverForm(request.POST, request.FILES)
         if form.is_valid():
             driver = form.save()
             AuditHistory.objects.create(
@@ -51,6 +58,7 @@ def driver_create(request):
 
 
 
+@staff_member_required
 def driver_edit(request, pk: int):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == "POST":
@@ -72,12 +80,14 @@ def driver_edit(request, pk: int):
 
 
 
+@staff_member_required
 def batch_list(request):
     batches = Batch.objects.order_by("-created_at")
     return render(request, "batches/batch_list.html", {"batches": batches})
 
 
 
+@staff_member_required
 def batch_create(request):
     if request.method == "POST":
         form = BatchForm(request.POST)
@@ -98,12 +108,14 @@ def batch_create(request):
 
 
 
+@staff_member_required
 def exam_list(request):
     exams = ExamPaper.objects.select_related("batch").order_by("-created_at")
     return render(request, "exams/exam_list.html", {"exams": exams})
 
 
 
+@staff_member_required
 def exam_upload(request):
     if request.method == "POST":
         form = ExamUploadForm(request.POST, request.FILES)
@@ -126,6 +138,7 @@ def exam_upload(request):
 
 
 
+@staff_member_required
 @transaction.atomic
 def exam_distribute(request, pk: int):
     exam = get_object_or_404(ExamPaper, pk=pk)
@@ -150,6 +163,7 @@ def exam_distribute(request, pk: int):
 
 
 
+@staff_member_required
 def submission_list(request, exam_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
     distributions = (
@@ -174,6 +188,7 @@ def submission_list(request, exam_id: int):
 
 
 
+@staff_member_required
 def score_submission(request, exam_id: int, driver_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
     driver = get_object_or_404(Driver, pk=driver_id)
@@ -211,6 +226,7 @@ def score_submission(request, exam_id: int, driver_id: int):
 
 
 
+@staff_member_required
 def printable_paper(request, exam_id: int, driver_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
     driver = get_object_or_404(Driver, pk=driver_id)
@@ -227,3 +243,36 @@ def printable_paper(request, exam_id: int, driver_id: int):
             "is_pdf": is_pdf,
         },
     )
+
+
+@login_required
+def driver_portal(request):
+    driver = getattr(request.user, 'driver_profile', None)
+    if driver is None:
+        raise Http404("Driver profile not found for this account")
+
+    distributions = (
+        ExamDistribution.objects.filter(driver=driver)
+        .select_related('exam')
+        .order_by('-created_at')
+    )
+    submissions = {s.exam_id: s for s in Submission.objects.filter(driver=driver)}
+    progress_rows = []
+    for dist in distributions:
+        sub = submissions.get(dist.exam_id)
+        progress_rows.append({
+            'exam': dist.exam,
+            'status': dist.status,
+            'score': sub.score if sub else None,
+        })
+
+    upcoming = (
+        TimetableEntry.objects.filter(Q(driver=driver) | Q(batch=driver.batch))
+        .order_by('starts_at')[:10]
+    )
+
+    return render(request, 'drivers/driver_portal.html', {
+        'driver': driver,
+        'progress_rows': progress_rows,
+        'upcoming': upcoming,
+    })
