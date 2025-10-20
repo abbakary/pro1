@@ -22,12 +22,14 @@ class Batch(TimeStampedModel):
 
 
 class Driver(TimeStampedModel):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='driver_profile')
     first_name = models.CharField(max_length=80)
     last_name = models.CharField(max_length=80, blank=True)
     phone = models.CharField(max_length=32, blank=True)
     license_no = models.CharField(max_length=64, blank=True)
     company = models.CharField(max_length=120, blank=True)
     batch = models.ForeignKey(Batch, on_delete=models.SET_NULL, null=True, related_name='drivers')
+    profile_photo = models.ImageField(upload_to='driver_photos/', blank=True)
 
     def __str__(self) -> str:
         return f"{self.first_name} {self.last_name}".strip()
@@ -92,3 +94,17 @@ class AuditHistory(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.action} {self.entity_type} {self.entity_id}"
+
+
+class TimetableEntry(TimeStampedModel):
+    title = models.CharField(max_length=200)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField(null=True, blank=True)
+    batch = models.ForeignKey(Batch, on_delete=models.CASCADE, null=True, blank=True, related_name='timetable_entries')
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, null=True, blank=True, related_name='timetable_entries')
+    location = models.CharField(max_length=200, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self) -> str:
+        return self.title
