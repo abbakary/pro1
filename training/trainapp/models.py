@@ -108,3 +108,42 @@ class TimetableEntry(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.title
+
+
+class Notification(TimeStampedModel):
+    title = models.CharField(max_length=200)
+    body = models.TextField(blank=True)
+    attachment = models.FileField(upload_to='notifications/', blank=True)
+    batch = models.ForeignKey(Batch, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
+    driver = models.ForeignKey(Driver, on_delete=models.SET_NULL, null=True, blank=True, related_name='notifications')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def target_display(self) -> str:
+        if self.driver:
+            return str(self.driver)
+        if self.batch:
+            return f"Batch: {self.batch.name}"
+        return "All"
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class NotificationReceipt(TimeStampedModel):
+    notification = models.ForeignKey(Notification, on_delete=models.CASCADE, related_name='receipts')
+    driver = models.ForeignKey(Driver, on_delete=models.CASCADE, related_name='notification_receipts')
+    is_read = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ('notification', 'driver')
+
+    def __str__(self) -> str:
+        return f"{self.notification.title} -> {self.driver.first_name}"
+
+
+class NotificationResponse(TimeStampedModel):
+    receipt = models.ForeignKey(NotificationReceipt, on_delete=models.CASCADE, related_name='responses')
+    message = models.TextField()
+
+    def __str__(self) -> str:
+        return f"Response to {self.receipt.notification.title} by {self.receipt.driver.first_name}"
