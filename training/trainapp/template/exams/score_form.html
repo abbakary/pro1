@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Score Submission{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6"><h4>{{ exam.title }} — {{ driver.first_name }} {{ driver.last_name }}</h4></div>
+      <div class="col-6 text-end"><a class="btn btn-outline-secondary" href="{% url 'trainingapp:submission_list' exam.id %}">Back</a></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <div class="row g-3">
+          {% for field in form %}
+            <div class="col-md-6">
+              <label class="form-label">{{ field.label }}</label>
+              {{ field }}
+              {% if field.errors %}<div class="text-danger small">{{ field.errors|striptags }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        <div class="mt-3 d-flex gap-2">
+          <button class="btn btn-primary" type="submit">Save</button>
+          <a class="btn btn-outline-secondary" href="{% url 'trainingapp:printable_paper' exam.id driver.id %}" target="_blank">Open Printable</a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
