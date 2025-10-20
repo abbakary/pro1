@@ -34,3 +34,26 @@ class SubmissionAdmin(admin.ModelAdmin):
 class AuditHistoryAdmin(admin.ModelAdmin):
     list_display = ("action", "entity_type", "entity_id", "user", "created_at")
     search_fields = ("action", "entity_type", "entity_id")
+
+@admin.register(TimetableEntry)
+class TimetableEntryAdmin(admin.ModelAdmin):
+    list_display = ("title", "starts_at", "ends_at", "batch", "driver", "created_at")
+    list_filter = ("batch",)
+    search_fields = ("title", "location", "notes")
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ("title", "target_display", "created_by", "created_at")
+    search_fields = ("title", "body")
+    list_filter = ("batch",)
+
+@admin.register(NotificationReceipt)
+class NotificationReceiptAdmin(admin.ModelAdmin):
+    list_display = ("notification", "driver", "is_read", "created_at")
+    list_filter = ("is_read",)
+    search_fields = ("notification__title", "driver__first_name", "driver__last_name")
+
+@admin.register(NotificationResponse)
+class NotificationResponseAdmin(admin.ModelAdmin):
+    list_display = ("receipt", "created_at")
+    search_fields = ("message",)
