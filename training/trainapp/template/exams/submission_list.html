@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Submissions{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6"><h4>{{ exam.title }} — Submissions</h4></div>
+      <div class="col-6 text-end"><a class="btn btn-outline-secondary" href="{% url 'trainingapp:exam_list' %}">Back</a></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Driver</th>
+              <th>Status</th>
+              <th>Score</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for dist in distributions %}
+            {% with sub=submissions|dictsort:"0" %}{% endwith %}
+            {% with submission=submissions|get_item:dist.driver.id %}{% endwith %}
+            <tr>
+              <td>{{ dist.driver.first_name }} {{ dist.driver.last_name }}</td>
+              <td>{{ dist.status|title }}</td>
+              <td>{% if submissions.dist.driver.id %}{% endif %}</td>
+              <td>
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'trainingapp:score_submission' exam.id dist.driver.id %}">Score/Upload</a>
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'trainingapp:printable_paper' exam.id dist.driver.id %}" target="_blank">Print</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
