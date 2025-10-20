@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block title %}My Portal{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6"><h4>My Portal</h4></div>
+      <div class="col-6 text-end"></div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-xl-4 col-lg-5">
+      <div class="card">
+        <div class="card-body d-flex flex-column align-items-center">
+          {% if driver.profile_photo %}
+            <img src="{{ driver.profile_photo.url }}" alt="{{ driver.first_name }} {{ driver.last_name }}" class="img-fluid b-r-10" style="max-width: 180px;">
+          {% else %}
+            <div class="b-r-10 d-flex align-items-center justify-content-center" style="width:180px;height:180px;background-color:#f0f0f0;">
+              <span class="h2 m-0">{{ driver.first_name|first|upper }}</span>
+            </div>
+          {% endif %}
+          <h5 class="mt-3 mb-1">{{ driver.first_name }} {{ driver.last_name }}</h5>
+          <div class="text-muted">Batch: {{ driver.batch|default:"—" }}</div>
+          <div class="text-muted">License: {{ driver.license_no|default:"—" }}</div>
+          <div class="text-muted">Phone: {{ driver.phone|default:"—" }}</div>
+          <div class="text-muted">Company: {{ driver.company|default:"—" }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-xl-8 col-lg-7">
+      <div class="card mb-3">
+        <div class="card-header pb-0"><h5 class="mb-0">Progress</h5></div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Exam</th>
+                  <th>Status</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in progress_rows %}
+                  <tr>
+                    <td>{{ row.exam.title }}</td>
+                    <td class="text-capitalize">{{ row.status }}</td>
+                    <td>{% if row.score is not None %}{{ row.score }}{% else %}—{% endif %}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="3" class="text-center">No progress yet.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header pb-0"><h5 class="mb-0">Upcoming Timetable</h5></div>
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Starts</th>
+                  <th>Ends</th>
+                  <th>Location</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for t in upcoming %}
+                  <tr>
+                    <td>{{ t.title }}</td>
+                    <td>{{ t.starts_at }}</td>
+                    <td>{{ t.ends_at|default:"—" }}</td>
+                    <td>{{ t.location|default:"—" }}</td>
+                  </tr>
+                {% empty %}
+                  <tr><td colspan="4" class="text-center">No upcoming entries.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
