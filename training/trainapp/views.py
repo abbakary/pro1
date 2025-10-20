@@ -227,6 +227,14 @@ def score_submission(request, exam_id: int, driver_id: int):
 
 
 @staff_member_required
+def exam_view(request, exam_id: int):
+    exam = get_object_or_404(ExamPaper, pk=exam_id)
+    file_url = exam.file.url if exam.file else ""
+    is_pdf = file_url.lower().endswith(".pdf")
+    return render(request, "exams/exam_view.html", {"exam": exam, "is_pdf": is_pdf})
+
+
+@staff_member_required
 def printable_paper(request, exam_id: int, driver_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
     driver = get_object_or_404(Driver, pk=driver_id)
