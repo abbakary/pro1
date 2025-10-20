@@ -261,25 +261,96 @@ def exam_distribute(request, pk: int):
 @staff_member_required
 def submission_list(request, exam_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
-    distributions = (
-        ExamDistribution.objects.filter(exam=exam)
-        .select_related("driver")
-        .order_by("driver__first_name", "driver__last_name")
-    )
-    submissions = {s.driver_id: s for s in Submission.objects.filter(exam=exam)}
+
+    q = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+    min_score = request.GET.get('min_score', '').strip()
+    max_score = request.GET.get('max_score', '').strip()
+
+    base_qs = ExamDistribution.objects.filter(exam=exam).select_related('driver')
+    if q:
+        base_qs = base_qs.filter(Q(driver__first_name__icontains=q) | Q(driver__last_name__icontains=q) | Q(driver__license_no__icontains=q))
+    if status:
+        base_qs = base_qs.filter(status=status)
+
+    score_filtered = False
+    if min_score or max_score:
+        score_filtered = True
+        if min_score:
+            base_qs = base_qs.filter(driver__submissions__exam=exam, driver__submissions__score__gte=min_score)
+        if max_score:
+            base_qs = base_qs.filter(driver__submissions__exam=exam, driver__submissions__score__lte=max_score)
+
+    distributions = base_qs.order_by('driver__first_name', 'driver__last_name')
+
+    submissions_map = {s.driver_id: s for s in Submission.objects.filter(exam=exam)}
     rows = []
     for d in distributions:
-        sub = submissions.get(d.driver_id)
+        sub = submissions_map.get(d.driver_id)
+        if score_filtered and sub is None:
+            continue
         rows.append({
-            "driver": d.driver,
-            "status": d.status,
-            "score": sub.score if sub else None,
+            'driver': d.driver,
+            'status': d.status,
+            'score': sub.score if sub else None,
         })
-    return render(
-        request,
-        "exams/submission_list.html",
-        {"exam": exam, "rows": rows, "distributions": distributions},
-    )
+
+    ctx = {
+        'exam': exam,
+        'rows': rows,
+        'q': q,
+        'status': status,
+        'min_score': min_score,
+        'max_score': max_score,
+    }
+    return render(request, 'exams/submission_list.html', ctx)
+
+
+@staff_member_required
+def exam_results_print(request, exam_id: int):
+    exam = get_object_or_404(ExamPaper, pk=exam_id)
+    driver_id = request.GET.get('driver_id')
+
+    q = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+    min_score = request.GET.get('min_score', '').strip()
+    max_score = request.GET.get('max_score', '').strip()
+
+    base_qs = ExamDistribution.objects.filter(exam=exam).select_related('driver')
+    if driver_id:
+        base_qs = base_qs.filter(driver_id=driver_id)
+    if q:
+        base_qs = base_qs.filter(Q(driver__first_name__icontains=q) | Q(driver__last_name__icontains=q) | Q(driver__license_no__icontains=q))
+    if status:
+        base_qs = base_qs.filter(status=status)
+
+    score_filtered = False
+    if min_score or max_score:
+        score_filtered = True
+        if min_score:
+            base_qs = base_qs.filter(driver__submissions__exam=exam, driver__submissions__score__gte=min_score)
+        if max_score:
+            base_qs = base_qs.filter(driver__submissions__exam=exam, driver__submissions__score__lte=max_score)
+
+    distributions = base_qs.order_by('driver__first_name', 'driver__last_name')
+
+    submissions_map = {s.driver_id: s for s in Submission.objects.filter(exam=exam)}
+    rows = []
+    for d in distributions:
+        sub = submissions_map.get(d.driver_id)
+        if score_filtered and sub is None:
+            continue
+        rows.append({
+            'driver': d.driver,
+            'status': d.status,
+            'score': sub.score if sub else None,
+        })
+
+    return render(request, 'exams/results_print.html', {
+        'exam': exam,
+        'rows': rows,
+        'single_driver': Driver.objects.filter(pk=driver_id).first() if driver_id else None,
+    })
 
 
 
