@@ -9,7 +9,7 @@ from .forms import BatchForm, DriverForm, ExamUploadForm, ScoreForm
 from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Submission
 
 
-@login_required
+
 def dashboard(request):
     drivers_count = Driver.objects.count()
     batch_count = Batch.objects.count()
@@ -24,13 +24,13 @@ def dashboard(request):
     return render(request, "dashboard-02.html", context)
 
 
-@login_required
+
 def driver_list(request):
     drivers = Driver.objects.select_related("batch").order_by("-created_at")
     return render(request, "drivers/driver_list.html", {"drivers": drivers})
 
 
-@login_required
+
 def driver_create(request):
     if request.method == "POST":
         form = DriverForm(request.POST)
@@ -50,7 +50,7 @@ def driver_create(request):
     return render(request, "drivers/driver_form.html", {"form": form, "title": "Add Driver"})
 
 
-@login_required
+
 def driver_edit(request, pk: int):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == "POST":
@@ -71,13 +71,13 @@ def driver_edit(request, pk: int):
     return render(request, "drivers/driver_form.html", {"form": form, "title": "Edit Driver"})
 
 
-@login_required
+
 def batch_list(request):
     batches = Batch.objects.order_by("-created_at")
     return render(request, "batches/batch_list.html", {"batches": batches})
 
 
-@login_required
+
 def batch_create(request):
     if request.method == "POST":
         form = BatchForm(request.POST)
@@ -97,13 +97,13 @@ def batch_create(request):
     return render(request, "batches/batch_form.html", {"form": form, "title": "Add Batch"})
 
 
-@login_required
+
 def exam_list(request):
     exams = ExamPaper.objects.select_related("batch").order_by("-created_at")
     return render(request, "exams/exam_list.html", {"exams": exams})
 
 
-@login_required
+
 def exam_upload(request):
     if request.method == "POST":
         form = ExamUploadForm(request.POST, request.FILES)
@@ -125,7 +125,7 @@ def exam_upload(request):
     return render(request, "exams/exam_upload.html", {"form": form})
 
 
-@login_required
+
 @transaction.atomic
 def exam_distribute(request, pk: int):
     exam = get_object_or_404(ExamPaper, pk=pk)
@@ -149,7 +149,7 @@ def exam_distribute(request, pk: int):
     return redirect("trainingapp:submission_list", exam_id=exam.id)
 
 
-@login_required
+
 def submission_list(request, exam_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
     distributions = (
@@ -173,7 +173,7 @@ def submission_list(request, exam_id: int):
     )
 
 
-@login_required
+
 def score_submission(request, exam_id: int, driver_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
     driver = get_object_or_404(Driver, pk=driver_id)
@@ -210,7 +210,7 @@ def score_submission(request, exam_id: int, driver_id: int):
     )
 
 
-@login_required
+
 def printable_paper(request, exam_id: int, driver_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
     driver = get_object_or_404(Driver, pk=driver_id)
