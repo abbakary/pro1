@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Exams{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6"><h4>Exams</h4></div>
+      <div class="col-6 text-end"><a class="btn btn-primary" href="{% url 'trainingapp:exam_upload' %}">Upload Exam</a></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Title</th><th>Batch</th><th>Total Marks</th><th>Uploaded</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for e in exams %}
+            <tr>
+              <td>{{ e.title }}</td>
+              <td>{{ e.batch|default:"-" }}</td>
+              <td>{{ e.total_marks }}</td>
+              <td>{{ e.created_at }}</td>
+              <td>
+                {% if e.batch %}
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'trainingapp:exam_distribute' e.id %}">Distribute</a>
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'trainingapp:submission_list' e.id %}">Submissions</a>
+                {% else %}
+                  <span class="badge bg-warning">No batch</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="text-center">No exams yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
