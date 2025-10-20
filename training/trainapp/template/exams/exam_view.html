@@ -1,0 +1,35 @@
+{% load static %}
+{% extends "base.html" %}
+{% block title %}View Exam{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6"><h4>View: {{ exam.title }}</h4></div>
+      <div class="col-6 text-end"><a class="btn btn-outline-secondary" href="{% url 'trainingapp:exam_list' %}">Back</a></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <div class="d-flex flex-column flex-md-row gap-3">
+        <div class="flex-grow-1" style="border:1px solid #e9ecef; border-radius:8px; overflow:auto; max-height:80vh;">
+          {% if is_pdf %}
+            <embed src="{{ exam.file.url }}" type="application/pdf" style="width:100%; height:80vh;" />
+          {% else %}
+            <img src="{{ exam.file.url }}" alt="{{ exam.title }}" class="img-fluid" style="display:block; max-width:none;" />
+          {% endif %}
+        </div>
+        <div class="flex-shrink-0" style="min-width:260px;">
+          <div class="border rounded p-3">
+            <div class="mb-2"><strong>Title:</strong> {{ exam.title }}</div>
+            <div class="mb-2"><strong>Batch:</strong> {{ exam.batch|default:"-" }}</div>
+            <div class="mb-2"><strong>Total Marks:</strong> {{ exam.total_marks }}</div>
+            <div class="mb-2"><strong>Uploaded:</strong> {{ exam.created_at }}</div>
+            <div class="mb-2"><strong>File:</strong> <a href="{{ exam.file.url }}" target="_blank">Open raw</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
