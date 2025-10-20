@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Timetable{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6"><h4>Timetable</h4></div>
+      <div class="col-6 text-end"><a class="btn btn-primary" href="{% url 'trainingapp:timetable_create' %}">Add Entry</a></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Starts</th>
+              <th>Ends</th>
+              <th>Batch</th>
+              <th>Driver</th>
+              <th>Location</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in entries %}
+              <tr>
+                <td>{{ t.title }}</td>
+                <td>{{ t.starts_at }}</td>
+                <td>{{ t.ends_at|default:"-" }}</td>
+                <td>{{ t.batch|default:"-" }}</td>
+                <td>{{ t.driver|default:"-" }}</td>
+                <td>{{ t.location|default:"-" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6" class="text-center">No entries yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
