@@ -58,6 +58,47 @@
         </div>
       </div>
 
+      <div class="card mb-3">
+        <div class="card-header pb-0"><h5 class="mb-0">Notifications</h5></div>
+        <div class="card-body" style="max-height:50vh; overflow:auto;">
+          {% for r in receipts %}
+            <div class="border rounded p-2 mb-2">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="fw-bold">{{ r.notification.title }}</div>
+                <div class="small text-muted">{{ r.created_at }}</div>
+              </div>
+              {% if r.notification.body %}
+                <div class="mt-1">{{ r.notification.body|linebreaks }}</div>
+              {% endif %}
+              <div class="d-flex gap-3 align-items-center mt-1">
+                {% if r.notification.attachment %}
+                  <a class="btn btn-sm btn-outline-secondary" href="{{ r.notification.attachment.url }}" target="_blank">Attachment</a>
+                {% endif %}
+                {% if r.is_read %}<span class="badge bg-success">Read</span>{% else %}<span class="badge bg-secondary">New</span>{% endif %}
+              </div>
+              <div class="mt-2">
+                {% for res in r.responses.all %}
+                  <div class="p-2 bg-light rounded mb-2">
+                    <div class="small text-muted">{{ res.created_at }}</div>
+                    <div>{{ res.message|linebreaksbr }}</div>
+                  </div>
+                {% empty %}
+                {% endfor %}
+              </div>
+              <form class="mt-2" method="post" action="{% url 'trainingapp:notification_respond' r.id %}">
+                {% csrf_token %}
+                {{ response_form.message.as_widget }}
+                <div class="mt-2">
+                  <button class="btn btn-sm btn-primary" type="submit">Respond</button>
+                </div>
+              </form>
+            </div>
+          {% empty %}
+            <div class="text-center text-muted">No notifications.</div>
+          {% endfor %}
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header pb-0"><h5 class="mb-0">Upcoming Timetable</h5></div>
         <div class="card-body">
