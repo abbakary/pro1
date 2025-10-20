@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Drivers{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6"><h4>Drivers</h4></div>
+      <div class="col-6 text-end"><a class="btn btn-primary" href="{% url 'trainingapp:driver_create' %}">Add Driver</a></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Phone</th><th>License</th><th>Company</th><th>Batch</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for d in drivers %}
+            <tr>
+              <td>{{ d.first_name }} {{ d.last_name }}</td>
+              <td>{{ d.phone }}</td>
+              <td>{{ d.license_no }}</td>
+              <td>{{ d.company }}</td>
+              <td>{{ d.batch }}</td>
+              <td><a class="btn btn-sm btn-outline-primary" href="{% url 'trainingapp:driver_edit' d.id %}">Edit</a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="text-center">No drivers yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

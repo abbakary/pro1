@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Batches{% endblock %}
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6"><h4>Batches</h4></div>
+      <div class="col-6 text-end"><a class="btn btn-primary" href="{% url 'trainingapp:batch_create' %}">Add Batch</a></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Start</th><th>End</th><th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for b in batches %}
+            <tr>
+              <td>{{ b.name }}</td>
+              <td>{{ b.start_date }}</td>
+              <td>{{ b.end_date }}</td>
+              <td>{{ b.description }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="4" class="text-center">No batches yet.</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
