@@ -279,8 +279,17 @@ def driver_portal(request):
         .order_by('starts_at')[:10]
     )
 
+    receipts = (
+        NotificationReceipt.objects.filter(driver=driver)
+        .select_related('notification')
+        .order_by('-created_at')
+    )
+    NotificationReceipt.objects.filter(driver=driver, is_read=False).update(is_read=True)
+
     return render(request, 'drivers/driver_portal.html', {
         'driver': driver,
         'progress_rows': progress_rows,
         'upcoming': upcoming,
+        'receipts': receipts,
+        'response_form': NotificationResponseForm(),
     })
