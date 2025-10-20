@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{{ exam.title }} — Results</title>
+  <link rel="stylesheet" href="{% static 'assets/css/vendors/bootstrap.css' %}">
+  <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+  <link id="color" rel="stylesheet" href="{% static 'assets/css/color-1.css' %}" media="screen">
+  <style>
+    @media print { .no-print{ display:none !important;} body{background:#fff;} }
+    .scroll-card{ border:1px solid #e9ecef; border-radius:8px; overflow:auto; max-height:85vh; }
+  </style>
+</head>
+<body>
+<div class="container my-3">
+  <div class="d-flex justify-content-between align-items-center no-print">
+    <h5 class="mb-0">{{ exam.title }} — {% if single_driver %}{{ single_driver.first_name }} {{ single_driver.last_name }}{% else %}All Drivers{% endif %}</h5>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary" href="javascript:window.print()">Print / Save as PDF</a>
+      <a class="btn btn-outline-primary" href="{% url 'trainingapp:submission_list' exam.id %}">Back</a>
+    </div>
+  </div>
+  <hr class="no-print">
+  <div class="scroll-card p-2">
+    <table class="table mb-0">
+      <thead>
+        <tr>
+          <th>Driver</th>
+          <th>Status</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ row.driver.first_name }} {{ row.driver.last_name }}</td>
+            <td class="text-capitalize">{{ row.status }}</td>
+            <td>{% if row.score is not None %}{{ row.score }}{% else %}-{% endif %}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3" class="text-center">No results.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>
