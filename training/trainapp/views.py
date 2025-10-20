@@ -16,17 +16,48 @@ from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Su
 def dashboard(request):
     if not request.user.is_staff and hasattr(request.user, 'driver_profile') and request.user.driver_profile:
         return redirect('trainingapp:driver_portal')
+
+    now = timezone.now()
+    first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
     drivers_count = Driver.objects.count()
     batch_count = Batch.objects.count()
     exams_count = ExamPaper.objects.count()
     scored_count = Submission.objects.exclude(score__isnull=True).count()
-    context = {
-        "drivers_count": drivers_count,
-        "batch_count": batch_count,
-        "exams_count": exams_count,
-        "scored_count": scored_count,
+    new_drivers_this_month = Driver.objects.filter(created_at__gte=first_of_month).count()
+
+    status_counts_qs = ExamDistribution.objects.values('status').annotate(c=Count('id'))
+    status_counts = {row['status']: row['c'] for row in status_counts_qs}
+    status_counts = {
+        'assigned': status_counts.get('assigned', 0),
+        'completed': status_counts.get('completed', 0),
+        'scored': status_counts.get('scored', 0),
     }
-    return render(request, "dashboard-02.html", context)
+
+    top_batches = (
+        Batch.objects.annotate(exams_count=Count('exams'))
+        .order_by('-exams_count', 'name')[:5]
+    )
+    batch_labels = [b.name for b in top_batches]
+    batch_exam_counts = [b.exams_count for b in top_batches]
+
+    upcoming_total = TimetableEntry.objects.filter(starts_at__gte=now).count()
+    recent_exams = ExamPaper.objects.select_related('batch').order_by('-created_at')[:5]
+
+    context = {
+        'drivers_count': drivers_count,
+        'batch_count': batch_count,
+        'exams_count': exams_count,
+        'scored_count': scored_count,
+        'new_drivers_this_month': new_drivers_this_month,
+        'status_counts': status_counts,
+        'batch_labels': batch_labels,
+        'batch_exam_counts': batch_exam_counts,
+        'upcoming_total': upcoming_total,
+        'recent_exams': recent_exams,
+        'now_time': now,
+    }
+    return render(request, 'dashboard-02.html', context)
 
 
 
