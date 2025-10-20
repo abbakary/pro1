@@ -88,6 +88,101 @@ def batch_list(request):
 
 
 @staff_member_required
+def timetable_list(request):
+    entries = (
+        TimetableEntry.objects.select_related('batch', 'driver')
+        .order_by('-starts_at')
+    )
+    return render(request, 'timetable/timetable_list.html', {"entries": entries})
+
+
+@staff_member_required
+def timetable_create(request):
+    if request.method == 'POST':
+        form = TimetableEntryForm(request.POST)
+        if form.is_valid():
+            t = form.save(commit=False)
+            t.created_by = request.user
+            t.save()
+            AuditHistory.objects.create(
+                action="create_timetable",
+                entity_type="TimetableEntry",
+                entity_id=str(t.id),
+                user=request.user,
+                details={"title": t.title},
+            )
+            messages.success(request, "Timetable entry created")
+            return redirect('trainingapp:timetable_list')
+    else:
+        form = TimetableEntryForm()
+    return render(request, 'timetable/timetable_form.html', {"form": form, "title": "Add Timetable Entry"})
+
+
+@staff_member_required
+def notification_list(request):
+    items = Notification.objects.order_by('-created_at')
+    return render(request, 'notifications/notification_list.html', {"items": items})
+
+
+@staff_member_required
+def notification_create(request):
+    if request.method == 'POST':
+        form = NotificationForm(request.POST, request.FILES)
+        if form.is_valid():
+            notif = form.save(commit=False)
+            notif.created_by = request.user
+            notif.save()
+            created = 0
+            if notif.driver:
+                NotificationReceipt.objects.get_or_create(notification=notif, driver=notif.driver)
+                created = 1
+            elif notif.batch:
+                for d in Driver.objects.filter(batch=notif.batch):
+                    NotificationReceipt.objects.get_or_create(notification=notif, driver=d)
+                    created += 1
+            AuditHistory.objects.create(
+                action="create_notification",
+                entity_type="Notification",
+                entity_id=str(notif.id),
+                user=request.user,
+                details={"title": notif.title, "recipients": created},
+            )
+            messages.success(request, f"Notification sent to {created} driver(s)")
+            return redirect('trainingapp:notification_list')
+    else:
+        form = NotificationForm()
+    return render(request, 'notifications/notification_form.html', {"form": form, "title": "Send Notification"})
+
+
+@staff_member_required
+def notification_detail(request, pk: int):
+    notif = get_object_or_404(Notification, pk=pk)
+    receipts = (
+        NotificationReceipt.objects.filter(notification=notif)
+        .select_related('driver')
+        .order_by('-created_at')
+    )
+    return render(request, 'notifications/notification_detail.html', {"notification": notif, "receipts": receipts})
+
+
+@login_required
+def notification_respond(request, receipt_id: int):
+    driver = getattr(request.user, 'driver_profile', None)
+    receipt = get_object_or_404(NotificationReceipt, pk=receipt_id)
+    if driver is None or receipt.driver_id != driver.id:
+        raise Http404("Not allowed")
+    if request.method == 'POST':
+        form = NotificationResponseForm(request.POST)
+        if form.is_valid():
+            resp = form.save(commit=False)
+            resp.receipt = receipt
+            resp.save()
+            messages.success(request, "Response sent")
+            return redirect('trainingapp:driver_portal')
+    return redirect('trainingapp:driver_portal')
+
+
+@staff_member_required
 def batch_create(request):
     if request.method == "POST":
         form = BatchForm(request.POST)
