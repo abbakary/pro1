@@ -34,6 +34,7 @@ urlpatterns = [
 
     # Submissions / Scoring
     path('exams/<int:exam_id>/submissions/', views.submission_list, name='submission_list'),
+    path('exams/<int:exam_id>/results/print/', views.exam_results_print, name='exam_results_print'),
     path('exams/<int:exam_id>/score/<int:driver_id>/', views.score_submission, name='score_submission'),
 
     # Printable / Embedded
