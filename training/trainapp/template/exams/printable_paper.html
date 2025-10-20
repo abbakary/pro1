@@ -25,7 +25,7 @@
   </div>
   <hr class="no-print">
   <div class="paper-container">
-    {% if exam.file.url|lower|endswith:'.pdf' %}
+    {% if is_pdf %}
       <embed src="{{ exam.file.url }}" type="application/pdf" width="100%" height="900px" />
     {% else %}
       <img src="{{ exam.file.url }}" alt="Exam Paper" class="img-fluid w-100"/>
