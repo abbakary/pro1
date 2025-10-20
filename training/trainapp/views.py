@@ -215,6 +215,8 @@ def printable_paper(request, exam_id: int, driver_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
     driver = get_object_or_404(Driver, pk=driver_id)
     submission = Submission.objects.filter(exam=exam, driver=driver).first()
+    file_url = exam.file.url if exam.file else ""
+    is_pdf = file_url.lower().endswith(".pdf")
     return render(
         request,
         "exams/printable_paper.html",
@@ -222,5 +224,6 @@ def printable_paper(request, exam_id: int, driver_id: int):
             "exam": exam,
             "driver": driver,
             "submission": submission,
+            "is_pdf": is_pdf,
         },
     )
