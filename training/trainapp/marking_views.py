@@ -245,7 +245,7 @@ def api_generate_marked_pdf(request):
         return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
 
-def generate_marked_pdf(submission: Submission, template: ExamTemplate) -> 'MarkedExamSubmission':
+def generate_marked_pdf(submission: Submission, template: ExamTemplate):
     """
     Generate a marked PDF for a submission based on question answers.
     
