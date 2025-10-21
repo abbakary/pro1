@@ -1,0 +1,540 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Score Submissions{% endblock %}
+{% block extra_css %}
+<style>
+  .exam-selector-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+  }
+  .exam-selector-card .card-body {
+    padding: 1.5rem;
+  }
+  .exam-list-group {
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .exam-item {
+    padding: 0.75rem 1rem;
+    border-left: 4px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .exam-item:hover {
+    background-color: #f8f9fa;
+    border-left-color: #667eea;
+  }
+  .exam-item.active {
+    background-color: #e7f1ff;
+    border-left-color: #667eea;
+    font-weight: 600;
+  }
+  .scores-table-wrapper {
+    position: relative;
+  }
+  .scores-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+  }
+  .scores-table thead {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .scores-table th {
+    padding: 1rem;
+    font-weight: 600;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+    background-color: #f8f9fa;
+  }
+  .scores-table tbody tr {
+    border-bottom: 1px solid #dee2e6;
+    transition: background-color 0.2s ease;
+  }
+  .scores-table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+  .scores-table td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
+  }
+  .score-cell {
+    cursor: pointer;
+    position: relative;
+    min-width: 80px;
+  }
+  .score-cell:hover {
+    background-color: #e7f1ff;
+    border-radius: 4px;
+  }
+  .score-cell.editing {
+    padding: 0;
+  }
+  .score-input {
+    width: 100%;
+    border: 2px solid #667eea;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .notes-cell {
+    cursor: pointer;
+    color: #666;
+    font-size: 0.9rem;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .notes-cell:hover {
+    background-color: #e7f1ff;
+    border-radius: 4px;
+  }
+  .notes-cell.editing {
+    padding: 0;
+  }
+  .notes-textarea {
+    width: 100%;
+    border: 2px solid #667eea;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  .status-assigned {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  .status-completed {
+    background-color: #cce5ff;
+    color: #004085;
+  }
+  .status-scored {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  .saving-indicator {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+  .saving-indicator.saving::after {
+    content: '';
+    display: inline-block;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  .filter-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .export-buttons {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .no-exam-selected {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #666;
+  }
+  .no-exam-selected svg {
+    width: 80px;
+    height: 80px;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: #999;
+  }
+  .row-actions {
+    display: flex;
+    gap: 0.25rem;
+  }
+  .row-actions .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+  .success-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #d4edda;
+    color: #155724;
+    padding: 1rem 1.5rem;
+    border-radius: 4px;
+    border: 1px solid #c3e6cb;
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+  }
+  .error-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #f8d7da;
+    color: #721c24;
+    padding: 1rem 1.5rem;
+    border-radius: 4px;
+    border: 1px solid #f5c6cb;
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+  }
+  @keyframes slideIn {
+    from { transform: translateX(400px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  .table-scroll {
+    max-height: 600px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="page-title">
+    <div class="row">
+      <div class="col-6">
+        <h4>Score Submissions & Recording</h4>
+      </div>
+      <div class="col-6 text-end">
+        <a class="btn btn-outline-secondary" href="{% url 'trainingapp:exam_list' %}">Back to Exams</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-3">
+      <div class="card exam-selector-card">
+        <div class="card-body">
+          <h5 class="card-title mb-3">Select Exam</h5>
+          <div class="exam-list-group">
+            {% for exam in exams %}
+              <a href="?exam_id={{ exam.id }}" class="list-group-item list-group-item-action exam-item {% if selected_exam.id == exam.id %}active{% endif %}">
+                <div class="fw-600">{{ exam.title }}</div>
+                <small class="d-block text-muted">{{ exam.batch }}</small>
+              </a>
+            {% empty %}
+              <div class="empty-state">No exams available</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-9">
+      {% if selected_exam %}
+        <div class="card">
+          <div class="card-header border-bottom">
+            <div class="row align-items-center">
+              <div class="col-auto">
+                <h5 class="mb-0">{{ selected_exam.title }}</h5>
+                <small class="text-muted">{{ selected_exam.batch }} | Total Marks: {{ selected_exam.total_marks }}</small>
+              </div>
+              <div class="col-auto ms-auto">
+                <div class="export-buttons">
+                  <button class="btn btn-sm btn-outline-info" onclick="downloadPDF('all')">
+                    <i class="fa fa-download"></i> Download PDF (All)
+                  </button>
+                  <button class="btn btn-sm btn-outline-info" onclick="downloadPDF('filtered')">
+                    <i class="fa fa-download"></i> Download PDF (Filtered)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <div class="filter-section">
+              <form class="row g-2 align-items-end" method="get" id="filterForm">
+                <input type="hidden" name="exam_id" value="{{ selected_exam.id }}">
+                <div class="col-md-4">
+                  <label class="form-label">Search Driver</label>
+                  <input name="q" class="form-control" value="{{ q }}" placeholder="Name or license">
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Status</label>
+                  <select name="status" class="form-select">
+                    <option value="">All</option>
+                    <option value="assigned" {% if status == 'assigned' %}selected{% endif %}>Assigned</option>
+                    <option value="completed" {% if status == 'completed' %}selected{% endif %}>Completed</option>
+                    <option value="scored" {% if status == 'scored' %}selected{% endif %}>Scored</option>
+                  </select>
+                </div>
+                <div class="col-md-4 d-flex gap-2">
+                  <button class="btn btn-primary" type="submit">Filter</button>
+                  <a class="btn btn-outline-secondary" href="?exam_id={{ selected_exam.id }}">Reset</a>
+                </div>
+              </form>
+            </div>
+
+            {% if rows %}
+              <div class="table-scroll">
+                <table class="table scores-table mb-0">
+                  <thead>
+                    <tr>
+                      <th style="width: 25%;">Driver</th>
+                      <th style="width: 15%;">License</th>
+                      <th style="width: 15%;">Company</th>
+                      <th style="width: 15%;">Batch</th>
+                      <th style="width: 10%;">Status</th>
+                      <th style="width: 12%;">Score</th>
+                      <th style="width: 25%;">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in rows %}
+                      <tr data-driver-id="{{ row.driver_id }}" data-submission-id="{{ row.submission_id }}">
+                        <td class="fw-600">{{ row.driver_name }}</td>
+                        <td><small class="text-muted">{{ row.license_no }}</small></td>
+                        <td><small>{{ row.company }}</small></td>
+                        <td><small>{{ row.batch }}</small></td>
+                        <td>
+                          <span class="status-badge status-{{ row.status }}">
+                            {{ row.status|capfirst }}
+                          </span>
+                        </td>
+                        <td class="score-cell" onclick="editScore(this, '{{ row.driver_id }}')">
+                          <span class="score-display">
+                            {% if row.score is not None %}
+                              <strong>{{ row.score }}</strong>
+                            {% else %}
+                              <span class="text-muted">—</span>
+                            {% endif %}
+                          </span>
+                          <span class="saving-indicator"></span>
+                        </td>
+                        <td class="notes-cell" onclick="editNotes(this, '{{ row.driver_id }}')">
+                          {% if row.notes %}
+                            {{ row.notes|truncatewords:5 }}
+                          {% else %}
+                            <span class="text-muted">—</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="empty-state">
+                <i class="fa fa-inbox" style="font-size: 3rem; opacity: 0.3;"></i>
+                <p>No submissions to score. Try adjusting your filters.</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+        <div class="card">
+          <div class="card-body no-exam-selected">
+            <i class="fa fa-file-text" style="font-size: 3rem; opacity: 0.3;"></i>
+            <h5>Select an exam to begin scoring</h5>
+            <p class="text-muted">Choose an exam from the list on the left to view and score driver submissions</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]').content;
+const examId = new URLSearchParams(window.location.search).get('exam_id');
+
+function editScore(cell, driverId) {
+  const display = cell.querySelector('.score-display');
+  const currentScore = display.textContent.trim();
+  const cleanScore = currentScore === '—' ? '' : currentScore;
+
+  if (cell.classList.contains('editing')) return;
+
+  cell.classList.add('editing');
+  cell.innerHTML = `<input type="number" class="score-input" step="0.01" value="${cleanScore}" min="0" max="100" placeholder="Score">`;
+  
+  const input = cell.querySelector('.score-input');
+  input.focus();
+  input.select();
+
+  function saveScore() {
+    const score = input.value.trim();
+    if (score === cleanScore) {
+      cancelEdit(cell, driverId);
+      return;
+    }
+
+    saveScoreToDB(driverId, score || null, cell);
+  }
+
+  input.addEventListener('blur', saveScore);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveScore();
+    if (e.key === 'Escape') cancelEdit(cell, driverId);
+  });
+}
+
+function editNotes(cell, driverId) {
+  const currentNotes = cell.textContent.trim();
+  const cleanNotes = currentNotes === '—' ? '' : currentNotes;
+
+  if (cell.classList.contains('editing')) return;
+
+  cell.classList.add('editing');
+  cell.innerHTML = `<textarea class="notes-textarea" rows="3" placeholder="Add notes...">${cleanNotes}</textarea>`;
+  
+  const textarea = cell.querySelector('.notes-textarea');
+  textarea.focus();
+
+  function saveNotes() {
+    const notes = textarea.value.trim();
+    if (notes === cleanNotes) {
+      cancelEdit(cell, driverId);
+      return;
+    }
+
+    saveNotesToDB(driverId, notes, cell);
+  }
+
+  textarea.addEventListener('blur', saveNotes);
+  textarea.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cancelEdit(cell, driverId);
+  });
+}
+
+function cancelEdit(cell, driverId) {
+  const row = document.querySelector(`tr[data-driver-id="${driverId}"]`);
+  location.reload();
+}
+
+function saveScoreToDB(driverId, score, cell) {
+  if (!examId) {
+    showError('No exam selected');
+    return;
+  }
+
+  const indicator = cell.querySelector('.saving-indicator');
+  indicator.classList.add('saving');
+
+  fetch('{% url "trainingapp:api_save_score" %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN,
+    },
+    body: JSON.stringify({
+      exam_id: examId,
+      driver_id: driverId,
+      score: score !== '' ? parseFloat(score) : null,
+      notes: '',
+    }),
+  })
+  .then(res => res.json())
+  .then(data => {
+    indicator.classList.remove('saving');
+    if (data.success) {
+      showSuccess(`Score saved for driver #${driverId}`);
+      setTimeout(() => location.reload(), 800);
+    } else {
+      showError(data.message || 'Error saving score');
+      location.reload();
+    }
+  })
+  .catch(err => {
+    indicator.classList.remove('saving');
+    showError('Network error: ' + err.message);
+    location.reload();
+  });
+}
+
+function saveNotesToDB(driverId, notes, cell) {
+  if (!examId) {
+    showError('No exam selected');
+    return;
+  }
+
+  const indicator = cell.querySelector('.saving-indicator') || document.createElement('span');
+  const row = document.querySelector(`tr[data-driver-id="${driverId}"]`);
+
+  fetch('{% url "trainingapp:api_save_score" %}', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': CSRF_TOKEN,
+    },
+    body: JSON.stringify({
+      exam_id: examId,
+      driver_id: driverId,
+      score: null,
+      notes: notes,
+    }),
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      showSuccess('Notes saved');
+      setTimeout(() => location.reload(), 800);
+    } else {
+      showError(data.message || 'Error saving notes');
+      location.reload();
+    }
+  })
+  .catch(err => {
+    showError('Network error: ' + err.message);
+    location.reload();
+  });
+}
+
+function downloadPDF(type) {
+  if (!examId) {
+    showError('Please select an exam first');
+    return;
+  }
+
+  let url = `{% url 'trainingapp:exam_results_print' 0 %}`.replace('0', examId);
+  
+  if (type === 'filtered') {
+    const form = document.getElementById('filterForm');
+    const params = new URLSearchParams(new FormData(form));
+    url += '?' + params.toString();
+  }
+
+  window.open(url, '_blank');
+}
+
+function showSuccess(message) {
+  const toast = document.createElement('div');
+  toast.className = 'success-toast';
+  toast.textContent = '✓ ' + message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function showError(message) {
+  const toast = document.createElement('div');
+  toast.className = 'error-toast';
+  toast.textContent = '✗ ' + message;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+</script>
+{% endblock %}

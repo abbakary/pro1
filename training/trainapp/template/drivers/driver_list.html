@@ -1,39 +1,435 @@
 {% extends "base.html" %}
 {% block title %}Drivers{% endblock %}
+{% block extra_css %}
+<style>
+  .driver-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .filter-bar {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+  }
+  .filter-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: end;
+  }
+  .filter-group {
+    flex: 1;
+    min-width: 200px;
+  }
+  .filter-group label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+  .filter-group input,
+  .filter-group select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 0.9rem;
+  }
+  .filter-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .filter-actions button,
+  .filter-actions a {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .btn-filter {
+    background: #667eea;
+    color: white;
+  }
+  .btn-filter:hover {
+    background: #5568d3;
+  }
+  .btn-reset {
+    background: #e9ecef;
+    color: #333;
+  }
+  .btn-reset:hover {
+    background: #dee2e6;
+  }
+  .drivers-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .drivers-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+  .drivers-table th {
+    padding: 1rem;
+    font-weight: 600;
+    text-align: left;
+    border-bottom: 2px solid #dee2e6;
+  }
+  .drivers-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+  }
+  .drivers-table tbody tr:hover {
+    background-color: #f8f9fa;
+  }
+  .drivers-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+  .driver-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .driver-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+  .driver-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  .driver-name {
+    font-weight: 600;
+    color: #333;
+  }
+  .driver-license {
+    font-size: 0.85rem;
+    color: #999;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+  }
+  .badge-batch {
+    background: #e7f1ff;
+    color: #004085;
+  }
+  .badge-company {
+    background: #fff3cd;
+    color: #856404;
+  }
+  .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .action-buttons .btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    border: 1px solid #ddd;
+    background: white;
+    color: #333;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .action-buttons .btn:hover {
+    background: #667eea;
+    color: white;
+    border-color: #667eea;
+  }
+  .stats-section {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #667eea;
+  }
+  .stat-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 0.5rem;
+  }
+  .empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #999;
+  }
+  .empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+  }
+  .created-at {
+    font-size: 0.85rem;
+    color: #999;
+  }
+  @media (max-width: 768px) {
+    .filter-row {
+      flex-direction: column;
+    }
+    .filter-group {
+      min-width: auto;
+    }
+    .drivers-table {
+      font-size: 0.9rem;
+    }
+    .drivers-table th,
+    .drivers-table td {
+      padding: 0.75rem;
+    }
+    .driver-info {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-  <div class="page-title">
-    <div class="row">
-      <div class="col-6"><h4>Drivers</h4></div>
-      <div class="col-6 text-end"><a class="btn btn-primary" href="{% url 'trainingapp:driver_create' %}">Add Driver</a></div>
+  <div class="driver-header">
+    <div>
+      <h4>Driver Management</h4>
+      <p class="text-muted mb-0">Track and manage all driver information</p>
+    </div>
+    <a class="btn btn-primary" href="{% url 'trainingapp:driver_create' %}">
+      <i class="fa fa-plus"></i> Add New Driver
+    </a>
+  </div>
+
+  <div class="stats-section">
+    <div class="stat-card">
+      <div class="stat-value">{{ drivers|length }}</div>
+      <div class="stat-label">Total Drivers</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="activeBatchCount">0</div>
+      <div class="stat-label">Assigned to Batch</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="withPhoneCount">0</div>
+      <div class="stat-label">With Phone</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" id="recentCount">0</div>
+      <div class="stat-label">Added This Month</div>
     </div>
   </div>
+
   <div class="card">
     <div class="card-body">
-      <div class="table-responsive">
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Name</th><th>Phone</th><th>License</th><th>Company</th><th>Batch</th><th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-          {% for d in drivers %}
-            <tr>
-              <td>{{ d.first_name }} {{ d.last_name }}</td>
-              <td>{{ d.phone }}</td>
-              <td>{{ d.license_no }}</td>
-              <td>{{ d.company }}</td>
-              <td>{{ d.batch }}</td>
-              <td><a class="btn btn-sm btn-outline-primary" href="{% url 'trainingapp:driver_edit' d.id %}">Edit</a></td>
-            </tr>
-          {% empty %}
-            <tr><td colspan="6" class="text-center">No drivers yet.</td></tr>
-          {% endfor %}
-          </tbody>
-        </table>
+      <div class="filter-bar">
+        <form class="filter-row" method="get" id="filterForm">
+          <div class="filter-group">
+            <label for="searchInput">Search Driver</label>
+            <input type="text" id="searchInput" name="q" placeholder="Name, phone, or license...">
+          </div>
+          <div class="filter-group">
+            <label for="batchFilter">Batch</label>
+            <select id="batchFilter" name="batch">
+              <option value="">All Batches</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="statusFilter">Status</label>
+            <select id="statusFilter" name="status">
+              <option value="">All</option>
+              <option value="with_contact">With Contact Info</option>
+              <option value="no_contact">Missing Contact</option>
+            </select>
+          </div>
+          <div class="filter-actions">
+            <button type="submit" class="btn-filter">
+              <i class="fa fa-search"></i> Search
+            </button>
+            <a href="{% url 'trainingapp:driver_list' %}" class="btn-reset">
+              <i class="fa fa-refresh"></i> Reset
+            </a>
+          </div>
+        </form>
       </div>
+
+      {% if drivers %}
+        <div class="table-responsive">
+          <table class="drivers-table">
+            <thead>
+              <tr>
+                <th style="width: 25%;">Driver</th>
+                <th style="width: 15%;">Contact</th>
+                <th style="width: 20%;">License</th>
+                <th style="width: 18%;">Company</th>
+                <th style="width: 12%;">Batch</th>
+                <th style="width: 10%;">Joined</th>
+                <th style="width: 15%;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for d in drivers %}
+                <tr data-driver-id="{{ d.id }}" data-batch-id="{% if d.batch %}{{ d.batch.id }}{% endif %}">
+                  <td>
+                    <div class="driver-info">
+                      <div class="driver-avatar">
+                        {% if d.profile_photo %}
+                          <img src="{{ d.profile_photo.url }}" alt="{{ d.first_name }}">
+                        {% else %}
+                          {{ d.first_name|first|upper }}
+                        {% endif %}
+                      </div>
+                      <div>
+                        <div class="driver-name">{{ d.first_name }} {{ d.last_name }}</div>
+                        <div class="driver-license">{{ d.license_no|default:"No License" }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div>
+                      {% if d.phone %}
+                        <div><i class="fa fa-phone"></i> {{ d.phone }}</div>
+                      {% else %}
+                        <span class="text-muted">No phone</span>
+                      {% endif %}
+                    </div>
+                  </td>
+                  <td>
+                    {% if d.license_no %}
+                      <span class="badge-company">{{ d.license_no }}</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if d.company %}
+                      <span>{{ d.company }}</span>
+                    {% else %}
+                      <span class="text-muted">—</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if d.batch %}
+                      <span class="badge-batch">{{ d.batch.name }}</span>
+                    {% else %}
+                      <span class="text-muted">Not Assigned</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <span class="created-at" title="{{ d.created_at }}">
+                      {{ d.created_at|date:"M d, y" }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="action-buttons">
+                      <a class="btn" href="{% url 'trainingapp:driver_edit' d.id %}">
+                        <i class="fa fa-pencil"></i> Edit
+                      </a>
+                      <a class="btn" href="{% url 'trainingapp:exam_list' %}" title="View Exams" target="_blank">
+                        <i class="fa fa-chart-bar"></i> Exams
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">
+            <i class="fa fa-users"></i>
+          </div>
+          <h4>No Drivers Found</h4>
+          <p>Start by adding a new driver to the system.</p>
+          <a href="{% url 'trainingapp:driver_create' %}" class="btn btn-primary" style="margin-top: 1rem;">
+            <i class="fa fa-plus"></i> Add Driver
+          </a>
+        </div>
+      {% endif %}
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const drivers = document.querySelectorAll('tbody tr');
+    let batchCount = 0;
+    let phoneCount = 0;
+    let recentCount = 0;
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    drivers.forEach(row => {
+      const batchId = row.dataset.batchId;
+      if (batchId) batchCount++;
+
+      const phoneCell = row.querySelector('td:nth-child(2)');
+      if (phoneCell && phoneCell.textContent.includes('fa-phone')) phoneCount++;
+
+      const dateCell = row.querySelector('td:nth-child(6)');
+      if (dateCell) {
+        const dateStr = dateCell.title;
+        const date = new Date(dateStr);
+        if (date >= thisMonth) recentCount++;
+      }
+    });
+
+    document.getElementById('activeBatchCount').textContent = batchCount;
+    document.getElementById('withPhoneCount').textContent = phoneCount;
+    document.getElementById('recentCount').textContent = recentCount;
+
+    const filterForm = document.getElementById('filterForm');
+    const searchInput = document.getElementById('searchInput');
+    
+    filterForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const q = searchInput.value;
+      const batch = document.getElementById('batchFilter').value;
+      const status = document.getElementById('statusFilter').value;
+      
+      let url = '{% url "trainingapp:driver_list" %}?';
+      if (q) url += `q=${encodeURIComponent(q)}&`;
+      if (batch) url += `batch=${batch}&`;
+      if (status) url += `status=${status}&`;
+      
+      window.location.href = url;
+    });
+  });
+</script>
 {% endblock %}

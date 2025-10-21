@@ -1,11 +1,13 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
-from django.db import transaction
-from django.db.models import Q, Count
-from django.http import Http404
+from django.db import transaction, models
+from django.db.models import Q, Count, Avg
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_http_methods
+import json
 
 from .forms import BatchForm, DriverForm, ExamUploadForm, ScoreForm, TimetableEntryForm, NotificationForm, NotificationResponseForm
 from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Submission, TimetableEntry, Notification, NotificationReceipt
@@ -19,12 +21,21 @@ def dashboard(request):
 
     now = timezone.now()
     first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_week = now - timezone.timedelta(days=7)
+    last_month = now - timezone.timedelta(days=30)
 
     drivers_count = Driver.objects.count()
     batch_count = Batch.objects.count()
     exams_count = ExamPaper.objects.count()
+    submissions_total = Submission.objects.count()
     scored_count = Submission.objects.exclude(score__isnull=True).count()
+    pending_score = Submission.objects.filter(score__isnull=True).count()
+
     new_drivers_this_month = Driver.objects.filter(created_at__gte=first_of_month).count()
+    new_drivers_this_week = Driver.objects.filter(created_at__gte=last_week).count()
+
+    new_submissions_this_week = Submission.objects.filter(created_at__gte=last_week).count()
+    new_submissions_this_month = Submission.objects.filter(created_at__gte=first_of_month).count()
 
     status_counts_qs = ExamDistribution.objects.values('status').annotate(c=Count('id'))
     status_counts = {row['status']: row['c'] for row in status_counts_qs}
@@ -35,26 +46,54 @@ def dashboard(request):
     }
 
     top_batches = (
-        Batch.objects.annotate(exams_count=Count('exams'))
-        .order_by('-exams_count', 'name')[:5]
+        Batch.objects.annotate(exams_count=Count('exams'), drivers_count=Count('drivers'))
+        .order_by('-exams_count', 'name')[:8]
     )
     batch_labels = [b.name for b in top_batches]
     batch_exam_counts = [b.exams_count for b in top_batches]
+    batch_driver_counts = [b.drivers_count for b in top_batches]
 
     upcoming_total = TimetableEntry.objects.filter(starts_at__gte=now).count()
-    recent_exams = ExamPaper.objects.select_related('batch').order_by('-created_at')[:5]
+    recent_exams = ExamPaper.objects.select_related('batch').order_by('-created_at')[:8]
+
+    recent_submissions = (
+        Submission.objects.select_related('driver', 'exam')
+        .order_by('-created_at')[:10]
+    )
+
+    pending_submissions = (
+        Submission.objects.filter(score__isnull=True)
+        .select_related('driver', 'exam')
+        .order_by('created_at')[:10]
+    )
+
+    top_performing_drivers = (
+        Driver.objects
+        .annotate(avg_score=models.Avg('submissions__score'), score_count=Count('submissions__score', filter=models.Q(submissions__score__isnull=False)))
+        .filter(score_count__gt=0)
+        .order_by('-avg_score')[:5]
+    )
 
     context = {
         'drivers_count': drivers_count,
         'batch_count': batch_count,
         'exams_count': exams_count,
+        'submissions_total': submissions_total,
         'scored_count': scored_count,
+        'pending_score': pending_score,
         'new_drivers_this_month': new_drivers_this_month,
+        'new_drivers_this_week': new_drivers_this_week,
+        'new_submissions_this_week': new_submissions_this_week,
+        'new_submissions_this_month': new_submissions_this_month,
         'status_counts': status_counts,
         'batch_labels': batch_labels,
         'batch_exam_counts': batch_exam_counts,
+        'batch_driver_counts': batch_driver_counts,
         'upcoming_total': upcoming_total,
         'recent_exams': recent_exams,
+        'recent_submissions': recent_submissions,
+        'pending_submissions': pending_submissions,
+        'top_performing_drivers': top_performing_drivers,
         'now_time': now,
     }
     return render(request, 'dashboard-02.html', context)
@@ -63,8 +102,30 @@ def dashboard(request):
 
 @staff_member_required
 def driver_list(request):
+    q = request.GET.get('q', '').strip()
+    batch = request.GET.get('batch', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+
     drivers = Driver.objects.select_related("batch").order_by("-created_at")
-    return render(request, "drivers/driver_list.html", {"drivers": drivers})
+
+    if q:
+        drivers = drivers.filter(
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(phone__icontains=q) |
+            Q(license_no__icontains=q)
+        )
+
+    if batch:
+        drivers = drivers.filter(batch_id=batch)
+
+    if status_filter == 'with_contact':
+        drivers = drivers.filter(Q(phone__isnull=False, phone__gt=''))
+    elif status_filter == 'no_contact':
+        drivers = drivers.filter(Q(phone__isnull=True) | Q(phone=''))
+
+    batches = Batch.objects.all().order_by('name')
+    return render(request, "drivers/driver_list.html", {"drivers": drivers, "batches": batches})
 
 
 
@@ -490,3 +551,104 @@ def driver_portal(request):
         'receipts': receipts,
         'response_form': NotificationResponseForm(),
     })
+
+
+@staff_member_required
+def score_submissions(request):
+    exam_id = request.GET.get('exam_id')
+    q = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+
+    exams = ExamPaper.objects.select_related('batch').order_by('-created_at')
+
+    rows = []
+    selected_exam = None
+
+    if exam_id:
+        selected_exam = get_object_or_404(ExamPaper, pk=exam_id)
+
+        base_qs = ExamDistribution.objects.filter(exam=selected_exam).select_related('driver')
+        if q:
+            base_qs = base_qs.filter(Q(driver__first_name__icontains=q) | Q(driver__last_name__icontains=q) | Q(driver__license_no__icontains=q))
+        if status:
+            base_qs = base_qs.filter(status=status)
+
+        distributions = base_qs.order_by('driver__first_name', 'driver__last_name')
+        submissions_map = {s.driver_id: s for s in Submission.objects.filter(exam=selected_exam)}
+
+        for d in distributions:
+            sub = submissions_map.get(d.driver_id)
+            rows.append({
+                'driver_id': d.driver.id,
+                'driver_name': f"{d.driver.first_name} {d.driver.last_name}",
+                'license_no': d.driver.license_no,
+                'company': d.driver.company,
+                'batch': d.driver.batch.name if d.driver.batch else '',
+                'status': d.status,
+                'score': sub.score if sub else None,
+                'notes': sub.notes if sub else '',
+                'submission_id': sub.id if sub else None,
+            })
+
+    ctx = {
+        'exams': exams,
+        'selected_exam': selected_exam,
+        'rows': rows,
+        'q': q,
+        'status': status,
+    }
+    return render(request, 'exams/score_submissions.html', ctx)
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def api_save_score(request):
+    try:
+        data = json.loads(request.body)
+        exam_id = data.get('exam_id')
+        driver_id = data.get('driver_id')
+        score = data.get('score')
+        notes = data.get('notes', '')
+
+        exam = get_object_or_404(ExamPaper, pk=exam_id)
+        driver = get_object_or_404(Driver, pk=driver_id)
+
+        if not ExamDistribution.objects.filter(exam=exam, driver=driver).exists():
+            return JsonResponse({'success': False, 'message': 'Driver not assigned to this exam'}, status=400)
+
+        submission, _ = Submission.objects.get_or_create(exam=exam, driver=driver)
+
+        submission.notes = notes
+        if score is not None and score != '':
+            try:
+                submission.score = float(score)
+                submission.graded_by = request.user
+                submission.graded_at = timezone.now()
+            except (ValueError, TypeError):
+                return JsonResponse({'success': False, 'message': 'Invalid score value'}, status=400)
+
+        submission.save()
+
+        ExamDistribution.objects.filter(exam=exam, driver=driver).update(
+            status='scored' if submission.score is not None else 'completed'
+        )
+
+        AuditHistory.objects.create(
+            action='score_submission_inline',
+            entity_type='Submission',
+            entity_id=str(submission.id),
+            user=request.user,
+            details={'score': float(submission.score) if submission.score else None},
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Score saved successfully',
+            'submission_id': submission.id,
+            'status': 'scored' if submission.score is not None else 'completed'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
