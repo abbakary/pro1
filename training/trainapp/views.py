@@ -21,12 +21,21 @@ def dashboard(request):
 
     now = timezone.now()
     first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_week = now - timezone.timedelta(days=7)
+    last_month = now - timezone.timedelta(days=30)
 
     drivers_count = Driver.objects.count()
     batch_count = Batch.objects.count()
     exams_count = ExamPaper.objects.count()
+    submissions_total = Submission.objects.count()
     scored_count = Submission.objects.exclude(score__isnull=True).count()
+    pending_score = Submission.objects.filter(score__isnull=True).count()
+
     new_drivers_this_month = Driver.objects.filter(created_at__gte=first_of_month).count()
+    new_drivers_this_week = Driver.objects.filter(created_at__gte=last_week).count()
+
+    new_submissions_this_week = Submission.objects.filter(created_at__gte=last_week).count()
+    new_submissions_this_month = Submission.objects.filter(created_at__gte=first_of_month).count()
 
     status_counts_qs = ExamDistribution.objects.values('status').annotate(c=Count('id'))
     status_counts = {row['status']: row['c'] for row in status_counts_qs}
@@ -37,26 +46,54 @@ def dashboard(request):
     }
 
     top_batches = (
-        Batch.objects.annotate(exams_count=Count('exams'))
-        .order_by('-exams_count', 'name')[:5]
+        Batch.objects.annotate(exams_count=Count('exams'), drivers_count=Count('drivers'))
+        .order_by('-exams_count', 'name')[:8]
     )
     batch_labels = [b.name for b in top_batches]
     batch_exam_counts = [b.exams_count for b in top_batches]
+    batch_driver_counts = [b.drivers_count for b in top_batches]
 
     upcoming_total = TimetableEntry.objects.filter(starts_at__gte=now).count()
-    recent_exams = ExamPaper.objects.select_related('batch').order_by('-created_at')[:5]
+    recent_exams = ExamPaper.objects.select_related('batch').order_by('-created_at')[:8]
+
+    recent_submissions = (
+        Submission.objects.select_related('driver', 'exam')
+        .order_by('-created_at')[:10]
+    )
+
+    pending_submissions = (
+        Submission.objects.filter(score__isnull=True)
+        .select_related('driver', 'exam')
+        .order_by('created_at')[:10]
+    )
+
+    top_performing_drivers = (
+        Driver.objects
+        .annotate(avg_score=models.Avg('submissions__score'), score_count=Count('submissions__score', filter=models.Q(submissions__score__isnull=False)))
+        .filter(score_count__gt=0)
+        .order_by('-avg_score')[:5]
+    )
 
     context = {
         'drivers_count': drivers_count,
         'batch_count': batch_count,
         'exams_count': exams_count,
+        'submissions_total': submissions_total,
         'scored_count': scored_count,
+        'pending_score': pending_score,
         'new_drivers_this_month': new_drivers_this_month,
+        'new_drivers_this_week': new_drivers_this_week,
+        'new_submissions_this_week': new_submissions_this_week,
+        'new_submissions_this_month': new_submissions_this_month,
         'status_counts': status_counts,
         'batch_labels': batch_labels,
         'batch_exam_counts': batch_exam_counts,
+        'batch_driver_counts': batch_driver_counts,
         'upcoming_total': upcoming_total,
         'recent_exams': recent_exams,
+        'recent_submissions': recent_submissions,
+        'pending_submissions': pending_submissions,
+        'top_performing_drivers': top_performing_drivers,
         'now_time': now,
     }
     return render(request, 'dashboard-02.html', context)
