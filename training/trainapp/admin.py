@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Driver, Batch, ExamPaper, ExamDistribution, Submission, AuditHistory, TimetableEntry, Notification, NotificationReceipt, NotificationResponse
+from .models import (
+    Driver, Batch, ExamPaper, ExamDistribution, Submission, AuditHistory,
+    TimetableEntry, Notification, NotificationReceipt, NotificationResponse,
+    ExamTemplate, QuestionAnswer, MarkedExamSubmission
+)
 
 @admin.register(Driver)
 class DriverAdmin(admin.ModelAdmin):
@@ -57,3 +61,24 @@ class NotificationReceiptAdmin(admin.ModelAdmin):
 class NotificationResponseAdmin(admin.ModelAdmin):
     list_display = ("receipt", "created_at")
     search_fields = ("message",)
+
+@admin.register(ExamTemplate)
+class ExamTemplateAdmin(admin.ModelAdmin):
+    list_display = ("exam", "is_processed", "detected_question_count", "created_at")
+    list_filter = ("is_processed",)
+    search_fields = ("exam__title",)
+    readonly_fields = ("question_mapping", "detected_question_count")
+
+@admin.register(QuestionAnswer)
+class QuestionAnswerAdmin(admin.ModelAdmin):
+    list_display = ("submission", "question_number", "is_correct", "created_at")
+    list_filter = ("is_correct",)
+    search_fields = ("submission__exam__title", "submission__driver__first_name", "submission__driver__last_name")
+    readonly_fields = ("submission", "question_number")
+
+@admin.register(MarkedExamSubmission)
+class MarkedExamSubmissionAdmin(admin.ModelAdmin):
+    list_display = ("submission", "total_correct", "total_questions", "is_generated", "created_at")
+    list_filter = ("is_generated",)
+    search_fields = ("submission__exam__title", "submission__driver__first_name", "submission__driver__last_name")
+    readonly_fields = ("submission", "total_correct", "total_questions", "generation_error")

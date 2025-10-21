@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>Exam Submissions</h2>
+                    <p class="text-muted">Driver: <strong>{{ driver.first_name }} {{ driver.last_name }}</strong></p>
+                </div>
+                <a href="{% url 'trainingapp:driver_list' %}" class="btn btn-outline-secondary">Back to Drivers</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        {% if submissions_with_marks %}
+            {% for item in submissions_with_marks %}
+            <div class="col-md-6 col-lg-4 mb-4">
+                <div class="card h-100 submission-card">
+                    <div class="card-header">
+                        <h6 class="mb-0">{{ item.submission.exam.title }}</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="submission-info mb-3">
+                            <div class="info-row">
+                                <span class="label">Exam:</span>
+                                <strong>{{ item.submission.exam.title }}</strong>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Total Marks:</span>
+                                <strong>{{ item.submission.exam.total_marks }}</strong>
+                            </div>
+                            
+                            {% if item.is_marked %}
+                            <div class="info-row">
+                                <span class="label">Questions Marked:</span>
+                                <strong>{{ item.question_count }}</strong>
+                            </div>
+                            
+                            {% if item.marked_submission %}
+                            <div class="info-row">
+                                <span class="label">Score:</span>
+                                <strong class="score-text">
+                                    {{ item.marked_submission.total_correct }}/{{ item.marked_submission.total_questions }}
+                                    ({{ item.marked_submission.get_percentage_score }}%)
+                                </strong>
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <div class="alert alert-warning mb-0">
+                                <small><i class="fa fa-info-circle"></i> Not yet marked</small>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="submission-meta text-muted small">
+                            <div>Submitted: {{ item.submission.created_at|date:"M d, Y H:i" }}</div>
+                            {% if item.submission.graded_at %}
+                            <div>Graded: {{ item.submission.graded_at|date:"M d, Y H:i" }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card-footer bg-light">
+                        <div class="d-grid gap-2">
+                            {% if item.can_download %}
+                            <a href="{% url 'trainingapp:download_marked_pdf' item.submission.id %}" 
+                               class="btn btn-sm btn-primary"
+                               download>
+                                <i class="fa fa-download"></i> Download Marked PDF
+                            </a>
+                            <a href="{% url 'trainingapp:view_marked_submission' item.submission.id %}" 
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="fa fa-eye"></i> View in Browser
+                            </a>
+                            {% else %}
+                            <button class="btn btn-sm btn-secondary" disabled>
+                                <i class="fa fa-lock"></i> Not Ready
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5>No Submissions Yet</h5>
+                <p>This driver hasn't submitted any exams yet.</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+.submission-card {
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+}
+
+.submission-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+.card-header h6 {
+    color: white;
+    margin: 0;
+}
+
+.submission-info {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-row .label {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.score-text {
+    color: #28a745;
+    font-size: 1.1rem;
+}
+
+.submission-meta {
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.card-footer {
+    border-top: 1px solid #e9ecef;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 768px) {
+    .submission-card {
+        margin-bottom: 1rem;
+    }
+}
+</style>
+{% endblock %}

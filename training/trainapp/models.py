@@ -147,3 +147,53 @@ class NotificationResponse(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"Response to {self.receipt.notification.title} by {self.receipt.driver.first_name}"
+
+
+class ExamTemplate(TimeStampedModel):
+    exam = models.OneToOneField(ExamPaper, on_delete=models.CASCADE, related_name='template')
+    original_file = models.FileField(upload_to='exam_templates/')
+    question_mapping = models.JSONField(default=dict, blank=True, help_text="Stores question positions detected from PDF")
+    is_processed = models.BooleanField(default=False, help_text="Whether question detection has been completed")
+    detected_question_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = 'Exam Template'
+        verbose_name_plural = 'Exam Templates'
+
+    def __str__(self) -> str:
+        return f"Template for {self.exam.title}"
+
+
+class QuestionAnswer(TimeStampedModel):
+    submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='question_answers')
+    question_number = models.PositiveIntegerField()
+    is_correct = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ('submission', 'question_number')
+        ordering = ['question_number']
+
+    def __str__(self) -> str:
+        return f"Q{self.question_number} - {self.submission.driver} - {'✓' if self.is_correct else '✗'}"
+
+
+class MarkedExamSubmission(TimeStampedModel):
+    submission = models.OneToOneField(Submission, on_delete=models.CASCADE, related_name='marked_version')
+    marked_pdf_file = models.FileField(upload_to='marked_submissions/', blank=True)
+    total_correct = models.PositiveIntegerField(default=0)
+    total_questions = models.PositiveIntegerField(default=0)
+    is_generated = models.BooleanField(default=False)
+    generation_error = models.TextField(blank=True)
+
+    def get_percentage_score(self) -> float:
+        if self.total_questions == 0:
+            return 0.0
+        return round((self.total_correct / self.total_questions) * 100, 2)
+
+    class Meta:
+        verbose_name = 'Marked Exam Submission'
+        verbose_name_plural = 'Marked Exam Submissions'
+
+    def __str__(self) -> str:
+        return f"Marked: {self.submission.driver} - {self.submission.exam}"

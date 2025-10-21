@@ -1,5 +1,10 @@
 from django.urls import path
 from . import views
+from .marking_views import (
+    create_exam_template, mark_submission_form, api_mark_question,
+    api_generate_marked_pdf, view_marked_submission, download_marked_pdf,
+    submission_marking_stats, driver_submissions
+)
 
 app_name = 'trainingapp'
 
@@ -10,6 +15,7 @@ urlpatterns = [
     path('drivers/', views.driver_list, name='driver_list'),
     path('drivers/new/', views.driver_create, name='driver_create'),
     path('drivers/<int:pk>/edit/', views.driver_edit, name='driver_edit'),
+    path('drivers/<int:driver_id>/submissions/', driver_submissions, name='driver_submissions'),
     path('driver/me/', views.driver_portal, name='driver_portal'),
 
     # Batches
@@ -31,6 +37,17 @@ urlpatterns = [
     path('exams/upload/', views.exam_upload, name='exam_upload'),
     path('exams/<int:pk>/distribute/', views.exam_distribute, name='exam_distribute'),
     path('exams/<int:exam_id>/view/', views.exam_view, name='exam_view'),
+
+    # Exam Templates & Marking
+    path('exams/<int:exam_id>/create-template/', create_exam_template, name='create_exam_template'),
+    path('exams/<int:exam_id>/mark/<int:driver_id>/', mark_submission_form, name='mark_submission'),
+    path('submissions/<int:submission_id>/view-marked/', view_marked_submission, name='view_marked_submission'),
+    path('submissions/<int:submission_id>/download-marked-pdf/', download_marked_pdf, name='download_marked_pdf'),
+
+    # API Endpoints for Marking
+    path('api/mark-question/', api_mark_question, name='api_mark_question'),
+    path('api/generate-marked-pdf/', api_generate_marked_pdf, name='api_generate_marked_pdf'),
+    path('api/marking-stats/<int:exam_id>/', submission_marking_stats, name='api_marking_stats'),
 
     # Submissions / Scoring
     path('score-submissions/', views.score_submissions, name='score_submissions'),

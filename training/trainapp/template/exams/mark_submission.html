@@ -1,0 +1,258 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>Mark Submission</h2>
+            <p class="text-muted">Exam: <strong>{{ exam.title }}</strong> | Driver: <strong>{{ driver.first_name }} {{ driver.last_name }}</strong></p>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row mt-3">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row mt-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Question Marking Form</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="marking-form">
+                        {% csrf_token %}
+                        
+                        <div class="marking-questions-container">
+                            {% for question in questions %}
+                            <div class="question-item card mb-3">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <h6 class="question-number">Question {{ question.number }}</h6>
+                                        </div>
+                                        <div class="col">
+                                            <div class="form-check form-switch">
+                                                <input 
+                                                    type="checkbox" 
+                                                    class="form-check-input question-checkbox" 
+                                                    id="question_{{ question.number }}_correct"
+                                                    name="question_{{ question.number }}_correct"
+                                                    {% if question.is_correct %}checked{% endif %}
+                                                >
+                                                <label class="form-check-label" for="question_{{ question.number }}_correct">
+                                                    <span class="correct-badge">Correct ✓</span>
+                                                    <span class="incorrect-badge">Incorrect ✗</span>
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-3">
+                                        <label for="question_{{ question.number }}_notes" class="form-label small">Notes (Optional)</label>
+                                        <textarea 
+                                            class="form-control form-control-sm"
+                                            id="question_{{ question.number }}_notes"
+                                            name="question_{{ question.number }}_notes"
+                                            rows="2"
+                                            placeholder="Add any notes about this question..."
+                                        >{{ question.notes }}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <a href="{% url 'trainingapp:submission_list' exam.id %}" class="btn btn-secondary">Cancel</a>
+                                <button type="submit" class="btn btn-primary">Save Marks & Generate PDF</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Marking Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="marking-stats">
+                        <div class="stat-item mb-3">
+                            <label class="small text-muted">Total Questions</label>
+                            <h4 id="total-questions">{{ questions|length }}</h4>
+                        </div>
+                        
+                        <div class="stat-item mb-3">
+                            <label class="small text-muted">Marked Correct</label>
+                            <h4 id="marked-correct" class="text-success">0</h4>
+                        </div>
+                        
+                        <div class="stat-item mb-3">
+                            <label class="small text-muted">Marked Incorrect</label>
+                            <h4 id="marked-incorrect" class="text-danger">0</h4>
+                        </div>
+
+                        <hr>
+                        
+                        <div class="stat-item">
+                            <label class="small text-muted">Score Percentage</label>
+                            <h3 id="score-percentage">0%</h3>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-sm btn-outline-success w-100 mb-2" onclick="markAllCorrect()">
+                            Mark All Correct ✓
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger w-100" onclick="markAllIncorrect()">
+                            Mark All Incorrect ✗
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Exam Information</h6>
+                </div>
+                <div class="card-body small">
+                    <div class="mb-2">
+                        <strong>Total Marks:</strong> {{ exam.total_marks }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Batch:</strong> {{ exam.batch.name|default:"N/A" }}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Created:</strong> {{ exam.created_at|date:"d-m-Y H:i" }}
+                    </div>
+                    <div>
+                        <strong>Detected Questions:</strong> {{ template.detected_question_count }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.question-item {
+    border-left: 4px solid #007bff;
+}
+
+.question-item.marked-correct {
+    border-left-color: #28a745;
+}
+
+.question-item.marked-incorrect {
+    border-left-color: #dc3545;
+}
+
+.question-number {
+    color: #007bff;
+    font-weight: bold;
+    margin-bottom: 0;
+}
+
+.question-item.marked-correct .question-number {
+    color: #28a745;
+}
+
+.question-item.marked-incorrect .question-number {
+    color: #dc3545;
+}
+
+.form-check-label .correct-badge {
+    color: #28a745;
+    font-weight: bold;
+    display: none;
+}
+
+.form-check-label .incorrect-badge {
+    color: #dc3545;
+    font-weight: bold;
+    display: none;
+}
+
+.form-check-input:checked ~ .form-check-label .correct-badge {
+    display: inline;
+}
+
+.form-check-input:not(:checked) ~ .form-check-label .incorrect-badge {
+    display: inline;
+}
+
+.marking-stats {
+    text-align: center;
+}
+
+.stat-item h4, .stat-item h3 {
+    margin-bottom: 0;
+}
+
+.sticky-top {
+    z-index: 10;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const checkboxes = document.querySelectorAll('.question-checkbox');
+    const markingForm = document.getElementById('marking-form');
+    
+    function updateStats() {
+        const total = document.querySelectorAll('.question-item').length;
+        const correct = document.querySelectorAll('.question-checkbox:checked').length;
+        const incorrect = total - correct;
+        const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+        
+        document.getElementById('marked-correct').textContent = correct;
+        document.getElementById('marked-incorrect').textContent = incorrect;
+        document.getElementById('score-percentage').textContent = percentage + '%';
+        
+        checkboxes.forEach(checkbox => {
+            const item = checkbox.closest('.question-item');
+            item.classList.remove('marked-correct', 'marked-incorrect');
+            
+            if (checkbox.checked) {
+                item.classList.add('marked-correct');
+            } else {
+                item.classList.add('marked-incorrect');
+            }
+        });
+    }
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateStats);
+    });
+    
+    updateStats();
+});
+
+function markAllCorrect() {
+    document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+        checkbox.dispatchEvent(new Event('change'));
+    });
+}
+
+function markAllIncorrect() {
+    document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+        checkbox.dispatchEvent(new Event('change'));
+    });
+}
+</script>
+{% endblock %}
