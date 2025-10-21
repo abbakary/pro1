@@ -262,4 +262,17 @@
     z-index: 10;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const total = {% if marked_submission and marked_submission.total_questions %}{{ marked_submission.total_questions }}{% else %}0{% endif %};
+    const correct = {% if marked_submission and marked_submission.total_correct %}{{ marked_submission.total_correct }}{% else %}0{% endif %};
+    const incorrect = total - correct;
+
+    const incorrectElement = document.getElementById('incorrect-count');
+    if (incorrectElement) {
+        incorrectElement.textContent = incorrect;
+    }
+});
+</script>
 {% endblock %}
