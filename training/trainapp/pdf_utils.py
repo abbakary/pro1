@@ -202,7 +202,7 @@ class PDFMarker:
     def add_score_summary(self, driver_name: str, exam_title: str, correct_count: int, total_questions: int, exam_date: str = "") -> bool:
         """
         Add a score summary box to the first page of the PDF.
-        
+
         Args:
             driver_name: Name of the driver
             exam_title: Title of the exam
@@ -212,38 +212,44 @@ class PDFMarker:
         """
         if not self.doc or len(self.doc) == 0:
             self.open_pdf()
-        
+
         try:
             page = self.doc[0]
             percentage = (correct_count / total_questions * 100) if total_questions > 0 else 0
-            
+
             summary_lines = [
-                "═" * 50,
+                "═" * 60,
                 "EXAM MARKING SUMMARY",
-                "═" * 50,
+                "═" * 60,
                 f"Driver: {driver_name}",
                 f"Exam: {exam_title}",
                 f"Score: {correct_count}/{total_questions} ({percentage:.1f}%)",
             ]
-            
+
             if exam_date:
                 summary_lines.append(f"Date: {exam_date}")
-            
-            summary_lines.append("═" * 50)
-            
-            y_pos = 50
-            line_height = 20
-            
-            for line in summary_lines:
+
+            summary_lines.append("═" * 60)
+            summary_lines.append("")
+            summary_lines.append("Legend: ✓ = Correct Answer | ✗ = Incorrect Answer")
+            summary_lines.append("═" * 60)
+
+            y_pos = 30
+            line_height = 22
+
+            for i, line in enumerate(summary_lines):
+                font_size = 13 if i in [1, 5] else 12
+                font_weight = "helv-Bold" if i in [1, 5] else "helv"
+
                 page.insert_text(
-                    (50, y_pos),
+                    (40, y_pos),
                     line,
-                    fontsize=11,
+                    fontsize=font_size,
                     color=(0, 0, 0),
-                    fontname="helv"
+                    fontname=font_weight
                 )
                 y_pos += line_height
-            
+
             return True
         except Exception as e:
             raise ValueError(f"Failed to add score summary: {str(e)}")
