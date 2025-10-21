@@ -33,9 +33,11 @@ urlpatterns = [
     path('exams/<int:exam_id>/view/', views.exam_view, name='exam_view'),
 
     # Submissions / Scoring
+    path('score-submissions/', views.score_submissions, name='score_submissions'),
     path('exams/<int:exam_id>/submissions/', views.submission_list, name='submission_list'),
     path('exams/<int:exam_id>/results/print/', views.exam_results_print, name='exam_results_print'),
     path('exams/<int:exam_id>/score/<int:driver_id>/', views.score_submission, name='score_submission'),
+    path('api/score-submission/', views.api_save_score, name='api_save_score'),
 
     # Printable / Embedded
     path('exams/<int:exam_id>/paper/<int:driver_id>/', views.printable_paper, name='printable_paper'),
