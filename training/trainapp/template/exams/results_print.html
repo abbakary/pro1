@@ -1,49 +1,375 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>{{ exam.title }} — Results</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ exam.title }} — Results Report</title>
   <link rel="stylesheet" href="{% static 'assets/css/vendors/bootstrap.css' %}">
-  <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
-  <link id="color" rel="stylesheet" href="{% static 'assets/css/color-1.css' %}" media="screen">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
-    @media print { .no-print{ display:none !important;} body{background:#fff;} }
-    .scroll-card{ border:1px solid #e9ecef; border-radius:8px; overflow:auto; max-height:85vh; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #333;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .header-section {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 2rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+    }
+    .header-title {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    .header-subtitle {
+      font-size: 1rem;
+      opacity: 0.9;
+    }
+    .controls {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 2rem;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .control-group {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .control-group label {
+      font-weight: 600;
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+    .control-group select,
+    .control-group input {
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+    .btn-primary {
+      background: #667eea;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #5568d3;
+    }
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+    }
+    .btn-secondary:hover {
+      background: #5a6268;
+    }
+    .results-card {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .results-table thead {
+      background: #f8f9fa;
+      border-bottom: 2px solid #dee2e6;
+    }
+    .results-table th {
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: #333;
+    }
+    .results-table td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #dee2e6;
+    }
+    .results-table tbody tr:hover {
+      background: #f8f9fa;
+    }
+    .status-badge {
+      display: inline-block;
+      padding: 0.35rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .status-assigned {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .status-completed {
+      background: #cce5ff;
+      color: #004085;
+    }
+    .status-scored {
+      background: #d4edda;
+      color: #155724;
+    }
+    .score-highlight {
+      font-weight: 700;
+      color: #667eea;
+    }
+    .summary-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #667eea;
+    }
+    .stat-label {
+      font-size: 0.9rem;
+      color: #666;
+      margin-top: 0.5rem;
+    }
+    .no-results {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: #999;
+    }
+    .no-results-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.3;
+    }
+    .print-only {
+      display: none;
+    }
+    .no-print {
+      display: block;
+    }
+    @media print {
+      .no-print { display: none !important; }
+      .print-only { display: block !important; }
+      body { background: white; }
+      .container { padding: 0; }
+      .results-card { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+      .header-section { page-break-after: avoid; }
+      .summary-stats { display: none; }
+    }
+    @media (max-width: 768px) {
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .control-group {
+        flex-direction: column;
+      }
+      .control-group select,
+      .control-group input {
+        width: 100%;
+      }
+      .header-title {
+        font-size: 1.5rem;
+      }
+      .results-table {
+        font-size: 0.9rem;
+      }
+      .results-table th,
+      .results-table td {
+        padding: 0.5rem;
+      }
+    }
   </style>
 </head>
 <body>
-<div class="container my-3">
-  <div class="d-flex justify-content-between align-items-center no-print">
-    <h5 class="mb-0">{{ exam.title }} — {% if single_driver %}{{ single_driver.first_name }} {{ single_driver.last_name }}{% else %}All Drivers{% endif %}</h5>
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-secondary" href="javascript:window.print()">Print / Save as PDF</a>
-      <a class="btn btn-outline-primary" href="{% url 'trainingapp:submission_list' exam.id %}">Back</a>
+  <div class="container">
+    <div class="header-section no-print">
+      <div class="header-title">{{ exam.title }}</div>
+      <div class="header-subtitle">
+        {% if single_driver %}
+          Score Report for {{ single_driver.first_name }} {{ single_driver.last_name }}
+        {% else %}
+          Comprehensive Score Report for All Drivers
+        {% endif %}
+      </div>
     </div>
+
+    <div class="header-section print-only" style="display: none; margin-bottom: 1rem; padding: 1rem;">
+      <div class="header-title" style="margin-bottom: 0.25rem;">{{ exam.title }}</div>
+      <div class="header-subtitle">
+        {% if single_driver %}
+          Score Report for {{ single_driver.first_name }} {{ single_driver.last_name }}
+        {% else %}
+          Comprehensive Score Report
+        {% endif %}
+      </div>
+      <div style="margin-top: 0.5rem; font-size: 0.9rem;">Exam: {{ exam.batch }} | Total Marks: {{ exam.total_marks }} | Generated: {{ "now"|date:"M d, Y H:i" }}</div>
+    </div>
+
+    <div class="controls no-print">
+      <div class="control-group">
+        <label>Filter by Status:</label>
+        <select id="statusFilter" onchange="location.href=buildUrl()">
+          <option value="">All Statuses</option>
+          <option value="assigned">Assigned</option>
+          <option value="completed">Completed</option>
+          <option value="scored">Scored Only</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>Min Score:</label>
+        <input type="number" id="minScore" placeholder="0" step="0.01">
+      </div>
+      <div class="control-group">
+        <label>Max Score:</label>
+        <input type="number" id="maxScore" placeholder="100" step="0.01">
+      </div>
+      <div style="margin-left: auto; display: flex; gap: 0.5rem;">
+        <button class="btn btn-secondary" onclick="applyFilters()">Apply Filters</button>
+        <button class="btn btn-primary" onclick="window.print()"><i class="fas fa-download"></i> Print / Save PDF</button>
+        <a class="btn btn-secondary" href="{% url 'trainingapp:submission_list' exam.id %}">Back</a>
+      </div>
+    </div>
+
+    {% if rows %}
+      <div class="summary-stats no-print">
+        <div class="stat-card">
+          <div class="stat-value">{{ rows|length }}</div>
+          <div class="stat-label">Total Drivers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="scoredCount">0</div>
+          <div class="stat-label">Scored</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="avgScore">0</div>
+          <div class="stat-label">Average Score</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="highScore">0</div>
+          <div class="stat-label">Highest Score</div>
+        </div>
+      </div>
+
+      <div class="results-card">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th style="width: 35%;">Driver Name</th>
+              <th style="width: 20%;">License No.</th>
+              <th style="width: 20%;">Status</th>
+              <th style="width: 15%;">Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><strong>{{ row.driver.first_name }} {{ row.driver.last_name }}</strong></td>
+                <td>{{ row.driver.license_no }}</td>
+                <td>
+                  <span class="status-badge status-{{ row.status }}">
+                    {{ row.status|upper }}
+                  </span>
+                </td>
+                <td>
+                  {% if row.score is not None %}
+                    <span class="score-highlight">{{ row.score }}/{{ exam.total_marks }}</span>
+                  {% else %}
+                    <span style="color: #999;">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="results-card">
+        <div class="no-results">
+          <div class="no-results-icon">
+            <i class="fas fa-inbox"></i>
+          </div>
+          <h4>No Results Found</h4>
+          <p>No submissions match the selected criteria. Try adjusting your filters.</p>
+        </div>
+      </div>
+    {% endif %}
   </div>
-  <hr class="no-print">
-  <div class="scroll-card p-2">
-    <table class="table mb-0">
-      <thead>
-        <tr>
-          <th>Driver</th>
-          <th>Status</th>
-          <th>Score</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in rows %}
-          <tr>
-            <td>{{ row.driver.first_name }} {{ row.driver.last_name }}</td>
-            <td class="text-capitalize">{{ row.status }}</td>
-            <td>{% if row.score is not None %}{{ row.score }}{% else %}-{% endif %}</td>
-          </tr>
-        {% empty %}
-          <tr><td colspan="3" class="text-center">No results.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</div>
+
+  <script>
+    function buildUrl() {
+      const status = document.getElementById('statusFilter').value;
+      let url = '?';
+      if (status) url += `status=${status}&`;
+      return url;
+    }
+
+    function applyFilters() {
+      const minScore = document.getElementById('minScore').value;
+      const maxScore = document.getElementById('maxScore').value;
+      const status = document.getElementById('statusFilter').value;
+
+      let url = '{{ request.path }}?';
+      if (status) url += `status=${status}&`;
+      if (minScore) url += `min_score=${minScore}&`;
+      if (maxScore) url += `max_score=${maxScore}&`;
+
+      window.location.href = url;
+    }
+
+    function calculateStats() {
+      const scores = [];
+      document.querySelectorAll('.results-table tbody tr').forEach(row => {
+        const scoreCell = row.querySelector('td:last-child');
+        if (scoreCell && scoreCell.textContent.trim() !== '—') {
+          const score = parseFloat(scoreCell.textContent.match(/[\d.]+/)[0]);
+          scores.push(score);
+        }
+      });
+
+      if (scores.length > 0) {
+        document.getElementById('scoredCount').textContent = scores.length;
+        document.getElementById('avgScore').textContent = (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2);
+        document.getElementById('highScore').textContent = Math.max(...scores).toFixed(2);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', calculateStats);
+  </script>
 </body>
 </html>
