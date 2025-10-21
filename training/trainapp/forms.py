@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import Driver, Batch, ExamPaper, Submission, TimetableEntry, Notification, NotificationResponse
+from .models import Driver, Batch, ExamPaper, Submission, TimetableEntry, Notification, NotificationResponse, QuestionAnswer
 
 User = get_user_model()
 
