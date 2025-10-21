@@ -65,8 +65,30 @@ def dashboard(request):
 
 @staff_member_required
 def driver_list(request):
+    q = request.GET.get('q', '').strip()
+    batch = request.GET.get('batch', '').strip()
+    status_filter = request.GET.get('status', '').strip()
+
     drivers = Driver.objects.select_related("batch").order_by("-created_at")
-    return render(request, "drivers/driver_list.html", {"drivers": drivers})
+
+    if q:
+        drivers = drivers.filter(
+            Q(first_name__icontains=q) |
+            Q(last_name__icontains=q) |
+            Q(phone__icontains=q) |
+            Q(license_no__icontains=q)
+        )
+
+    if batch:
+        drivers = drivers.filter(batch_id=batch)
+
+    if status_filter == 'with_contact':
+        drivers = drivers.filter(Q(phone__isnull=False, phone__gt=''))
+    elif status_filter == 'no_contact':
+        drivers = drivers.filter(Q(phone__isnull=True) | Q(phone=''))
+
+    batches = Batch.objects.all().order_by('name')
+    return render(request, "drivers/driver_list.html", {"drivers": drivers, "batches": batches})
 
 
 
