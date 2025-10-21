@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h2>Marked Submission Review</h2>
+            <p class="text-muted">Exam: <strong>{{ submission.exam.title }}</strong> | Driver: <strong>{{ submission.driver.first_name }} {{ submission.driver.last_name }}</strong></p>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Submission Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="detail-row">
+                                <span class="detail-label">Driver Name:</span>
+                                <span class="detail-value">{{ submission.driver.first_name }} {{ submission.driver.last_name }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">License No:</span>
+                                <span class="detail-value">{{ submission.driver.license_no|default:"N/A" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Company:</span>
+                                <span class="detail-value">{{ submission.driver.company|default:"N/A" }}</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="detail-row">
+                                <span class="detail-label">Exam Title:</span>
+                                <span class="detail-value">{{ submission.exam.title }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Graded By:</span>
+                                <span class="detail-value">{{ submission.graded_by.get_full_name|default:submission.graded_by|default:"Not graded" }}</span>
+                            </div>
+                            <div class="detail-row">
+                                <span class="detail-label">Graded Date:</span>
+                                <span class="detail-value">{{ submission.graded_at|date:"d-m-Y H:i"|default:"N/A" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if marked_submission and marked_submission.is_generated %}
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Marked PDF</h5>
+                </div>
+                <div class="card-body">
+                    {% if marked_submission.marked_pdf_file %}
+                    <div class="pdf-viewer-container mb-3">
+                        <iframe 
+                            src="{{ marked_submission.marked_pdf_file.url }}" 
+                            width="100%" 
+                            height="600px"
+                            style="border: 1px solid #ddd; border-radius: 4px;">
+                        </iframe>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'trainingapp:download_marked_pdf' submission.id %}" class="btn btn-primary">
+                            <i class="fas fa-download"></i> Download Marked PDF
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">Marked PDF file not available</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% elif marked_submission %}
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">PDF Generation Status</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <strong>Error generating PDF:</strong> {{ marked_submission.generation_error }}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Marked PDF</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">No marked PDF generated yet for this submission.</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Marking Summary</h6>
+                </div>
+                <div class="card-body">
+                    {% if marked_submission and marked_submission.total_questions > 0 %}
+                    <div class="score-box mb-3">
+                        <div class="score-large">{{ marked_submission.total_correct }}/{{ marked_submission.total_questions }}</div>
+                        <div class="score-percentage">{{ marked_submission.get_percentage_score }}%</div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="summary-details">
+                        <div class="detail-row">
+                            <span>Total Questions:</span>
+                            <strong>{{ marked_submission.total_questions }}</strong>
+                        </div>
+                        <div class="detail-row">
+                            <span>Correct Answers:</span>
+                            <strong class="text-success">{{ marked_submission.total_correct }}</strong>
+                        </div>
+                        <div class="detail-row">
+                            <span>Incorrect Answers:</span>
+                            <strong class="text-danger">{{ marked_submission.total_questions|add:marked_submission.total_correct|add:"-1" }}</strong>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted small">No marking data available</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Question Answers</h6>
+                </div>
+                <div class="card-body">
+                    {% if question_answers %}
+                    <div class="question-answers-list">
+                        {% for qa in question_answers %}
+                        <div class="question-answer-item">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    <span class="badge {% if qa.is_correct %}bg-success{% else %}bg-danger{% endif %}">
+                                        Q{{ qa.question_number }}
+                                    </span>
+                                </div>
+                                <div class="col">
+                                    <span class="answer-mark">
+                                        {% if qa.is_correct %}
+                                        ✓ Correct
+                                        {% else %}
+                                        ✗ Incorrect
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            {% if qa.notes %}
+                            <div class="mt-2 small">
+                                <em>{{ qa.notes }}</em>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted small">No question answers recorded</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-body">
+                    <a href="{% url 'trainingapp:submission_list' submission.exam.id %}" class="btn btn-secondary w-100">
+                        Back to Submissions
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-label {
+    font-weight: 500;
+    color: #666;
+}
+
+.detail-value {
+    text-align: right;
+}
+
+.score-box {
+    text-align: center;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 8px;
+}
+
+.score-large {
+    font-size: 48px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.score-percentage {
+    font-size: 24px;
+    margin-top: 10px;
+    opacity: 0.9;
+}
+
+.summary-details .detail-row {
+    border-bottom: 1px solid #e9ecef;
+    padding: 8px 0;
+    display: flex;
+    justify-content: space-between;
+}
+
+.question-answer-item {
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.question-answer-item:last-child {
+    margin-bottom: 0;
+}
+
+.answer-mark {
+    font-weight: 500;
+}
+
+.answer-mark.correct {
+    color: #28a745;
+}
+
+.answer-mark.incorrect {
+    color: #dc3545;
+}
+
+.pdf-viewer-container {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.sticky-top {
+    z-index: 10;
+}
+</style>
+{% endblock %}
