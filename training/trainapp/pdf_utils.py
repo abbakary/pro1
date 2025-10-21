@@ -113,13 +113,13 @@ class PDFQuestionDetector:
 
 class PDFMarker:
     """Marks PDF submissions with correct/incorrect indicators and score summary."""
-    
+
     CHECKMARK = "✓"
     CROSSMARK = "✗"
-    FONT_SIZE = 12
+    FONT_SIZE = 16
     MARK_COLOR = (0, 0, 0)
-    CORRECT_COLOR = (0, 0.7, 0)
-    INCORRECT_COLOR = (0.7, 0, 0)
+    CORRECT_COLOR = (0, 0.6, 0)
+    INCORRECT_COLOR = (0.8, 0, 0)
     
     def __init__(self, pdf_path: str, output_path: str):
         if fitz is None:
