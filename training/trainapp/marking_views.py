@@ -351,6 +351,34 @@ def download_marked_pdf(request, submission_id: int):
     return response
 
 
+@login_required
+def driver_submissions(request, driver_id: int):
+    """
+    Display all submissions and marked PDFs for a specific driver.
+    """
+    driver = get_object_or_404(Driver, pk=driver_id)
+
+    submissions = Submission.objects.filter(driver=driver).select_related('exam').order_by('-created_at')
+
+    submissions_with_marks = []
+    for sub in submissions:
+        marked_sub = MarkedExamSubmission.objects.filter(submission=sub).first()
+        question_answers = QuestionAnswer.objects.filter(submission=sub)
+
+        submissions_with_marks.append({
+            'submission': sub,
+            'marked_submission': marked_sub,
+            'question_count': question_answers.count(),
+            'is_marked': question_answers.count() > 0,
+            'can_download': marked_sub and marked_sub.is_generated and marked_sub.marked_pdf_file,
+        })
+
+    return render(request, 'exams/driver_submissions.html', {
+        'driver': driver,
+        'submissions_with_marks': submissions_with_marks,
+    })
+
+
 @staff_member_required
 @require_http_methods(["GET"])
 def submission_marking_stats(request, exam_id: int):
