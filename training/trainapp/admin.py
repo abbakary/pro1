@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Driver, Batch, ExamPaper, ExamDistribution, Submission, AuditHistory, TimetableEntry, Notification, NotificationReceipt, NotificationResponse
+from .models import (
+    Driver, Batch, ExamPaper, ExamDistribution, Submission, AuditHistory,
+    TimetableEntry, Notification, NotificationReceipt, NotificationResponse,
+    ExamTemplate, QuestionAnswer, MarkedExamSubmission
+)
 
 @admin.register(Driver)
 class DriverAdmin(admin.ModelAdmin):
