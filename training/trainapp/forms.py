@@ -67,3 +67,29 @@ class NotificationResponseForm(forms.ModelForm):
         widgets = {
             "message": forms.Textarea(attrs={"rows": 3, "placeholder": "Write your response..."}),
         }
+
+
+class QuestionAnswerForm(forms.ModelForm):
+    class Meta:
+        model = QuestionAnswer
+        fields = ["is_correct", "notes"]
+        widgets = {
+            "is_correct": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "notes": forms.Textarea(attrs={"rows": 2, "class": "form-control", "placeholder": "Optional notes..."}),
+        }
+
+
+class QuestionAnswerFormSet(forms.BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        if any(self.errors):
+            return
+
+        question_numbers = set()
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                question_num = form.cleaned_data.get('question_number')
+                if question_num:
+                    if question_num in question_numbers:
+                        raise forms.ValidationError("Duplicate question number")
+                    question_numbers.add(question_num)
