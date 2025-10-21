@@ -492,3 +492,104 @@ def driver_portal(request):
         'receipts': receipts,
         'response_form': NotificationResponseForm(),
     })
+
+
+@staff_member_required
+def score_submissions(request):
+    exam_id = request.GET.get('exam_id')
+    q = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+
+    exams = ExamPaper.objects.select_related('batch').order_by('-created_at')
+
+    rows = []
+    selected_exam = None
+
+    if exam_id:
+        selected_exam = get_object_or_404(ExamPaper, pk=exam_id)
+
+        base_qs = ExamDistribution.objects.filter(exam=selected_exam).select_related('driver')
+        if q:
+            base_qs = base_qs.filter(Q(driver__first_name__icontains=q) | Q(driver__last_name__icontains=q) | Q(driver__license_no__icontains=q))
+        if status:
+            base_qs = base_qs.filter(status=status)
+
+        distributions = base_qs.order_by('driver__first_name', 'driver__last_name')
+        submissions_map = {s.driver_id: s for s in Submission.objects.filter(exam=selected_exam)}
+
+        for d in distributions:
+            sub = submissions_map.get(d.driver_id)
+            rows.append({
+                'driver_id': d.driver.id,
+                'driver_name': f"{d.driver.first_name} {d.driver.last_name}",
+                'license_no': d.driver.license_no,
+                'company': d.driver.company,
+                'batch': d.driver.batch.name if d.driver.batch else '',
+                'status': d.status,
+                'score': sub.score if sub else None,
+                'notes': sub.notes if sub else '',
+                'submission_id': sub.id if sub else None,
+            })
+
+    ctx = {
+        'exams': exams,
+        'selected_exam': selected_exam,
+        'rows': rows,
+        'q': q,
+        'status': status,
+    }
+    return render(request, 'exams/score_submissions.html', ctx)
+
+
+@staff_member_required
+@require_http_methods(["POST"])
+def api_save_score(request):
+    try:
+        data = json.loads(request.body)
+        exam_id = data.get('exam_id')
+        driver_id = data.get('driver_id')
+        score = data.get('score')
+        notes = data.get('notes', '')
+
+        exam = get_object_or_404(ExamPaper, pk=exam_id)
+        driver = get_object_or_404(Driver, pk=driver_id)
+
+        if not ExamDistribution.objects.filter(exam=exam, driver=driver).exists():
+            return JsonResponse({'success': False, 'message': 'Driver not assigned to this exam'}, status=400)
+
+        submission, _ = Submission.objects.get_or_create(exam=exam, driver=driver)
+
+        submission.notes = notes
+        if score is not None and score != '':
+            try:
+                submission.score = float(score)
+                submission.graded_by = request.user
+                submission.graded_at = timezone.now()
+            except (ValueError, TypeError):
+                return JsonResponse({'success': False, 'message': 'Invalid score value'}, status=400)
+
+        submission.save()
+
+        ExamDistribution.objects.filter(exam=exam, driver=driver).update(
+            status='scored' if submission.score is not None else 'completed'
+        )
+
+        AuditHistory.objects.create(
+            action='score_submission_inline',
+            entity_type='Submission',
+            entity_id=str(submission.id),
+            user=request.user,
+            details={'score': float(submission.score) if submission.score else None},
+        )
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Score saved successfully',
+            'submission_id': submission.id,
+            'status': 'scored' if submission.score is not None else 'completed'
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'message': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
