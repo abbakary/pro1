@@ -122,7 +122,7 @@
                         </div>
                         <div class="detail-row">
                             <span>Incorrect Answers:</span>
-                            <strong class="text-danger">{{ marked_submission.total_questions|add:"-"|add:marked_submission.total_correct }}</strong>
+                            <strong class="text-danger" id="incorrect-count">0</strong>
                         </div>
                     </div>
                     {% else %}
