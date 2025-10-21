@@ -151,42 +151,50 @@ class PDFMarker:
     def overlay_marks(self, marks: Dict[int, bool]) -> bool:
         """
         Overlay checkmarks or cross marks on the PDF.
-        
+
         Args:
             marks: Dictionary mapping question number to True (correct) or False (incorrect)
         """
         if not self.doc:
             self.open_pdf()
-        
+
         try:
             for question_num, is_correct in marks.items():
                 question_str = str(question_num)
                 if question_str not in self.question_mapping:
                     continue
-                
+
                 question_info = self.question_mapping[question_str]
                 page_num = question_info["page"]
                 x = question_info["x"]
                 y = question_info["y"]
-                
+
                 if page_num >= len(self.doc):
                     continue
-                
+
                 page = self.doc[page_num]
                 mark_text = self.CHECKMARK if is_correct else self.CROSSMARK
                 mark_color = self.CORRECT_COLOR if is_correct else self.INCORRECT_COLOR
-                
+
                 insertion_x = x + 250
                 insertion_y = y - 3
-                
+
                 page.insert_text(
                     (insertion_x, insertion_y),
                     mark_text,
                     fontsize=self.FONT_SIZE,
                     color=mark_color,
+                    fontname="helv-Bold"
+                )
+
+                page.insert_text(
+                    (insertion_x + 20, insertion_y + 2),
+                    "",
+                    fontsize=self.FONT_SIZE - 4,
+                    color=mark_color,
                     fontname="helv"
                 )
-            
+
             return True
         except Exception as e:
             raise ValueError(f"Failed to overlay marks: {str(e)}")
