@@ -31,6 +31,7 @@
               <td>{{ e.created_at }}</td>
               <td class="d-flex gap-1">
                 <a class="btn btn-sm btn-outline-info" href="{% url 'trainingapp:exam_view' e.id %}" target="_blank">View</a>
+                <a class="btn btn-sm btn-outline-success" href="{% url 'trainingapp:create_exam_template' e.id %}">Process Template</a>
                 {% if e.batch %}
                   <a class="btn btn-sm btn-outline-primary" href="{% url 'trainingapp:exam_distribute' e.id %}">Distribute</a>
                   <a class="btn btn-sm btn-outline-secondary" href="{% url 'trainingapp:submission_list' e.id %}">Submissions</a>
