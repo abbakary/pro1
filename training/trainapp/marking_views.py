@@ -467,6 +467,7 @@ def unified_mark_submission(request, exam_id: int, driver_id: int):
 
     total_questions = len(questions)
     total_correct = sum(1 for q in questions if q['is_correct'])
+    total_incorrect = total_questions - total_correct
     percentage = round((total_correct / total_questions * 100), 2) if total_questions > 0 else 0
 
     return render(request, 'exams/unified_mark_submission.html', {
@@ -478,6 +479,7 @@ def unified_mark_submission(request, exam_id: int, driver_id: int):
         'marked_submission': marked_submission,
         'total_questions': total_questions,
         'total_correct': total_correct,
+        'total_incorrect': total_incorrect,
         'percentage': percentage,
     })
 
