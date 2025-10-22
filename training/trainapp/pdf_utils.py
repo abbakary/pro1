@@ -3,6 +3,7 @@ import re
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
+from django.utils import timezone
 
 try:
     import fitz
