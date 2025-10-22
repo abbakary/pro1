@@ -380,15 +380,118 @@ def driver_submissions(request, driver_id: int):
 
 
 @staff_member_required
+def unified_mark_submission(request, exam_id: int, driver_id: int):
+    """
+    Advanced unified marking interface with dual document viewer, marking controls, and real-time stats.
+    This is a single page that replaces the old mark_submission_form and view_marked_submission.
+    """
+    exam = get_object_or_404(ExamPaper, pk=exam_id)
+    driver = get_object_or_404(Driver, pk=driver_id)
+
+    if not ExamDistribution.objects.filter(exam=exam, driver=driver).exists():
+        raise Http404("Driver not assigned to this exam")
+
+    submission = Submission.objects.filter(exam=exam, driver=driver).first()
+    if not submission:
+        raise Http404("No submission found for this driver-exam pair")
+
+    template = ExamTemplate.objects.filter(exam=exam).first()
+    if not template or not template.is_processed:
+        messages.warning(request, "Exam template has not been processed yet. Creating template...")
+        return redirect('trainingapp:create_exam_template', exam_id=exam.id)
+
+    if request.method == 'POST':
+        question_mapping = template.question_mapping
+        marks_data = {}
+
+        for question_num in range(1, template.detected_question_count + 1):
+            is_correct_key = f'question_{question_num}_correct'
+            notes_key = f'question_{question_num}_notes'
+
+            is_correct = request.POST.get(is_correct_key) == 'on'
+            notes = request.POST.get(notes_key, '').strip()
+
+            marks_data[question_num] = {
+                'is_correct': is_correct,
+                'notes': notes,
+            }
+
+            QuestionAnswer.objects.update_or_create(
+                submission=submission,
+                question_number=question_num,
+                defaults={'is_correct': is_correct, 'notes': notes}
+            )
+
+        total_correct = sum(1 for m in marks_data.values() if m['is_correct'])
+
+        submission.score = Decimal(total_correct)
+        submission.graded_by = request.user
+        submission.graded_at = timezone.now()
+        submission.save()
+
+        ExamDistribution.objects.filter(exam=exam, driver=driver).update(status='scored')
+
+        generate_marked_pdf(submission, template)
+
+        AuditHistory.objects.create(
+            action='mark_submission',
+            entity_type='Submission',
+            entity_id=str(submission.id),
+            user=request.user,
+            details={
+                'exam_id': exam.id,
+                'driver_id': driver.id,
+                'total_correct': total_correct,
+                'total_questions': template.detected_question_count,
+            },
+        )
+
+        messages.success(request, "Submission marked successfully and PDF generated")
+        return redirect('trainingapp:unified_mark_submission', exam_id=exam.id, driver_id=driver.id)
+
+    existing_answers = {
+        qa.question_number: qa
+        for qa in QuestionAnswer.objects.filter(submission=submission)
+    }
+
+    questions = []
+    for question_num in range(1, template.detected_question_count + 1):
+        existing = existing_answers.get(question_num)
+        questions.append({
+            'number': question_num,
+            'is_correct': existing.is_correct if existing else False,
+            'notes': existing.notes if existing else '',
+        })
+
+    marked_submission = MarkedExamSubmission.objects.filter(submission=submission).first()
+
+    total_questions = len(questions)
+    total_correct = sum(1 for q in questions if q['is_correct'])
+    percentage = round((total_correct / total_questions * 100), 2) if total_questions > 0 else 0
+
+    return render(request, 'exams/unified_mark_submission.html', {
+        'exam': exam,
+        'driver': driver,
+        'submission': submission,
+        'questions': questions,
+        'template': template,
+        'marked_submission': marked_submission,
+        'total_questions': total_questions,
+        'total_correct': total_correct,
+        'percentage': percentage,
+    })
+
+
+@staff_member_required
 @require_http_methods(["GET"])
 def submission_marking_stats(request, exam_id: int):
     """
     Get marking statistics for all submissions of an exam.
     """
     exam = get_object_or_404(ExamPaper, pk=exam_id)
-    
+
     submissions = Submission.objects.filter(exam=exam).select_related('driver')
-    
+
     stats = {
         'total_submissions': submissions.count(),
         'marked_submissions': 0,
@@ -396,21 +499,21 @@ def submission_marking_stats(request, exam_id: int):
         'marked_pdfs_generated': 0,
         'submissions': []
     }
-    
+
     for sub in submissions:
         marked = MarkedExamSubmission.objects.filter(submission=sub).first()
         question_count = QuestionAnswer.objects.filter(submission=sub).count()
-        
+
         is_marked = question_count > 0
-        
+
         if is_marked:
             stats['marked_submissions'] += 1
         else:
             stats['unmarked_submissions'] += 1
-        
+
         if marked and marked.is_generated and marked.marked_pdf_file:
             stats['marked_pdfs_generated'] += 1
-        
+
         stats['submissions'].append({
             'submission_id': sub.id,
             'driver': str(sub.driver),
@@ -419,5 +522,5 @@ def submission_marking_stats(request, exam_id: int):
             'has_marked_pdf': marked and marked.is_generated,
             'score': float(sub.score) if sub.score else None,
         })
-    
+
     return JsonResponse(stats)

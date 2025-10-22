@@ -1,0 +1,584 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="marking-header">
+        <div class="row align-items-center mb-4">
+            <div class="col">
+                <h2 class="mb-0">Advanced Exam Marking</h2>
+                <p class="text-muted mb-0">{{ exam.title }} | {{ driver.first_name }} {{ driver.last_name }}</p>
+            </div>
+            <div class="col-auto">
+                <a href="{% url 'trainingapp:submission_list' exam.id %}" class="btn btn-outline-secondary">Back to Submissions</a>
+            </div>
+        </div>
+    </div>
+
+    {% if messages %}
+    <div class="row mb-3">
+        <div class="col-12">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="row g-3">
+        <div class="col-lg-9">
+            <div class="card marking-documents-card">
+                <div class="card-header bg-dark text-white">
+                    <ul class="nav nav-tabs nav-dark mb-0" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="exam-tab" data-bs-toggle="tab" data-bs-target="#exam-document" type="button" role="tab" aria-controls="exam-document" aria-selected="true">
+                                <i class="fas fa-file-pdf"></i> Original Exam
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="submission-tab" data-bs-toggle="tab" data-bs-target="#submission-document" type="button" role="tab" aria-controls="submission-document" aria-selected="false">
+                                <i class="fas fa-file-upload"></i> Student Submission
+                            </button>
+                        </li>
+                        {% if marked_submission and marked_submission.is_generated and marked_submission.marked_pdf_file %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="marked-tab" data-bs-toggle="tab" data-bs-target="#marked-document" type="button" role="tab" aria-controls="marked-document" aria-selected="false">
+                                <i class="fas fa-check-circle"></i> Marked Version
+                            </button>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div class="card-body p-0">
+                    <div class="tab-content marking-document-viewer">
+                        <div class="tab-pane fade show active" id="exam-document" role="tabpanel" aria-labelledby="exam-tab">
+                            {% if exam.file %}
+                            <iframe src="{{ exam.file.url }}" type="application/pdf" width="100%" height="600" style="border: none;"></iframe>
+                            {% else %}
+                            <div class="alert alert-warning mb-0">No exam file available</div>
+                            {% endif %}
+                        </div>
+
+                        <div class="tab-pane fade" id="submission-document" role="tabpanel" aria-labelledby="submission-tab">
+                            {% if submission.scanned_file %}
+                            <iframe src="{{ submission.scanned_file.url }}" type="application/pdf" width="100%" height="600" style="border: none;"></iframe>
+                            {% else %}
+                            <div class="alert alert-info mb-0">No student submission file available</div>
+                            {% endif %}
+                        </div>
+
+                        {% if marked_submission and marked_submission.is_generated and marked_submission.marked_pdf_file %}
+                        <div class="tab-pane fade" id="marked-document" role="tabpanel" aria-labelledby="marked-tab">
+                            <iframe src="{{ marked_submission.marked_pdf_file.url }}" type="application/pdf" width="100%" height="600" style="border: none;"></iframe>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3">
+            <div class="card marking-controls-card sticky-top" style="top: 20px;">
+                <div class="card-header bg-primary text-white">
+                    <h6 class="mb-0"><i class="fas fa-list-check"></i> Marking Summary</h6>
+                </div>
+                <div class="card-body">
+                    <div class="score-display">
+                        <div class="score-circle">
+                            <div class="score-number">{{ total_correct }}<span class="score-total">/{{ total_questions }}</span></div>
+                            <div class="score-label">Marked Correct</div>
+                        </div>
+                        <div class="score-percentage-display">
+                            <div class="percentage-value">{{ percentage }}%</div>
+                            <div class="percentage-bar">
+                                <div class="percentage-fill" style="width: {{ percentage }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="marking-stats-details mt-4">
+                        <div class="stat-row">
+                            <span class="stat-label">Total Questions</span>
+                            <span class="stat-value">{{ total_questions }}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Correct</span>
+                            <span class="stat-value text-success" id="correct-count">{{ total_correct }}</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Incorrect</span>
+                            <span class="stat-value text-danger" id="incorrect-count">{{ total_questions|add:total_correct|add:"-1"|add:"1" }}</span>
+                        </div>
+                    </div>
+
+                    <div class="quick-actions mt-4">
+                        <div class="btn-group d-grid gap-2" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="markAllCorrect()">
+                                <i class="fas fa-check-double"></i> Mark All Correct
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="markAllIncorrect()">
+                                <i class="fas fa-times-circle"></i> Mark All Incorrect
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header bg-secondary text-white">
+                    <h6 class="mb-0"><i class="fas fa-info-circle"></i> Submission Info</h6>
+                </div>
+                <div class="card-body small">
+                    <div class="info-item">
+                        <span class="info-label">Driver:</span>
+                        <span class="info-value">{{ driver.first_name }} {{ driver.last_name }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">License:</span>
+                        <span class="info-value">{{ driver.license_no|default:"N/A" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Batch:</span>
+                        <span class="info-value">{{ driver.batch.name|default:"N/A" }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Marks:</span>
+                        <span class="info-value">{{ exam.total_marks }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Submitted:</span>
+                        <span class="info-value">{{ submission.created_at|date:"d-m-Y H:i" }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card marking-questions-card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-question-circle"></i> Mark Questions</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="marking-form">
+                        {% csrf_token %}
+                        
+                        <div class="questions-grid">
+                            {% for question in questions %}
+                            <div class="question-marking-item" data-question="{% endfor %}">
+                                <div class="question-header">
+                                    <div class="question-number-badge">Q{{ question.number }}</div>
+                                    <div class="question-toggle">
+                                        <div class="form-check form-switch">
+                                            <input 
+                                                type="checkbox" 
+                                                class="form-check-input question-checkbox" 
+                                                id="question_{{ question.number }}_correct"
+                                                name="question_{{ question.number }}_correct"
+                                                data-question-num="{{ question.number }}"
+                                                {% if question.is_correct %}checked{% endif %}
+                                                onchange="updateStats()"
+                                            >
+                                            <label class="form-check-label" for="question_{{ question.number }}_correct">
+                                                <span class="badge bg-success">Correct</span>
+                                                <span class="badge bg-danger">Incorrect</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="question-notes">
+                                    <textarea 
+                                        class="form-control form-control-sm"
+                                        id="question_{{ question.number }}_notes"
+                                        name="question_{{ question.number }}_notes"
+                                        placeholder="Add notes..."
+                                        rows="2"
+                                    >{{ question.notes }}</textarea>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-12">
+                                <div class="d-flex gap-2">
+                                    <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
+                                        <i class="fas fa-save"></i> Save & Generate Marked PDF
+                                    </button>
+                                    <a href="{% url 'trainingapp:submission_list' exam.id %}" class="btn btn-outline-secondary btn-lg">
+                                        Cancel
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.marking-header {
+    border-bottom: 2px solid #e9ecef;
+    padding-bottom: 1rem;
+}
+
+.marking-documents-card {
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.marking-document-viewer {
+    background-color: #f8f9fa;
+}
+
+.marking-document-viewer .tab-pane {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 600px;
+    background-color: #f0f0f0;
+}
+
+.marking-document-viewer iframe {
+    background-color: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.nav-dark .nav-link {
+    color: #ffffff !important;
+    border-bottom: 3px solid transparent;
+}
+
+.nav-dark .nav-link.active {
+    color: #ffffff !important;
+    border-bottom-color: #ffffff !important;
+    background-color: rgba(255,255,255,0.1);
+}
+
+.nav-dark .nav-link:hover {
+    background-color: rgba(255,255,255,0.05);
+}
+
+.marking-controls-card {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(0,0,0,0.08);
+}
+
+.score-display {
+    text-align: center;
+    padding: 20px 0;
+}
+
+.score-circle {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.score-number {
+    font-size: 36px;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.score-total {
+    font-size: 18px;
+    margin-left: 5px;
+    opacity: 0.9;
+}
+
+.score-label {
+    font-size: 12px;
+    margin-top: 8px;
+    opacity: 0.95;
+}
+
+.score-percentage-display {
+    margin-top: 15px;
+}
+
+.percentage-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.percentage-bar {
+    width: 100%;
+    height: 8px;
+    background-color: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.percentage-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transition: width 0.3s ease;
+}
+
+.marking-stats-details {
+    border-top: 1px solid #e9ecef;
+    padding-top: 15px;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+.stat-label {
+    color: #666;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.quick-actions .btn-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #495057;
+}
+
+.info-value {
+    color: #666;
+    text-align: right;
+}
+
+.marking-questions-card {
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.questions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+    padding: 10px 0;
+}
+
+.question-marking-item {
+    border: 1px solid #e9ecef;
+    border-left: 4px solid #667eea;
+    border-radius: 6px;
+    padding: 16px;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.question-marking-item:hover {
+    border-left-color: #764ba2;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    background-color: #ffffff;
+}
+
+.question-marking-item.marked-correct {
+    border-left-color: #28a745;
+    background-color: #f0f8f5;
+}
+
+.question-marking-item.marked-incorrect {
+    border-left-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.question-number-badge {
+    font-size: 16px;
+    font-weight: bold;
+    color: #667eea;
+    background-color: rgba(102, 126, 234, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+    min-width: 50px;
+    text-align: center;
+}
+
+.question-marking-item.marked-correct .question-number-badge {
+    color: #28a745;
+    background-color: rgba(40, 167, 69, 0.1);
+}
+
+.question-marking-item.marked-incorrect .question-number-badge {
+    color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.question-toggle {
+    flex: 1;
+    margin-left: 12px;
+}
+
+.question-toggle .form-check {
+    margin-bottom: 0;
+}
+
+.question-toggle .form-check-label {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 0;
+    cursor: pointer;
+}
+
+.question-toggle .form-check-label .badge {
+    font-size: 12px;
+    display: none;
+}
+
+.question-toggle .form-check-input:checked ~ .form-check-label .bg-success {
+    display: inline-block;
+}
+
+.question-toggle .form-check-input:not(:checked) ~ .form-check-label .bg-danger {
+    display: inline-block;
+}
+
+.question-notes {
+    margin-top: 12px;
+}
+
+.question-notes .form-control {
+    border-color: #ddd;
+    background-color: #ffffff;
+}
+
+.question-notes .form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+@media (max-width: 992px) {
+    .questions-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .sticky-top {
+        position: relative !important;
+        top: auto !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .marking-document-viewer .tab-pane {
+        min-height: 400px;
+    }
+    
+    .marking-document-viewer iframe {
+        height: 400px !important;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    updateStats();
+});
+
+function updateStats() {
+    const checkboxes = document.querySelectorAll('.question-checkbox');
+    const items = document.querySelectorAll('.question-marking-item');
+    
+    let correct = 0;
+    let incorrect = 0;
+    
+    checkboxes.forEach((checkbox, index) => {
+        const item = items[index];
+        if (item) {
+            item.classList.remove('marked-correct', 'marked-incorrect');
+            if (checkbox.checked) {
+                item.classList.add('marked-correct');
+                correct++;
+            } else {
+                item.classList.add('marked-incorrect');
+                incorrect++;
+            }
+        }
+    });
+    
+    const total = checkboxes.length;
+    const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+    
+    document.getElementById('correct-count').textContent = correct;
+    document.getElementById('incorrect-count').textContent = incorrect;
+    
+    const percentageBar = document.querySelector('.percentage-fill');
+    const percentageValue = document.querySelector('.percentage-value');
+    const scoreNumber = document.querySelector('.score-number');
+    
+    if (percentageBar) {
+        percentageBar.style.width = percentage + '%';
+    }
+    if (percentageValue) {
+        percentageValue.textContent = percentage + '%';
+    }
+    if (scoreNumber) {
+        scoreNumber.innerHTML = correct + '<span class="score-total">/' + total + '</span>';
+    }
+}
+
+function markAllCorrect() {
+    document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+        checkbox.checked = true;
+    });
+    updateStats();
+}
+
+function markAllIncorrect() {
+    document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    updateStats();
+}
+
+document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateStats);
+});
+</script>
+{% endblock %}
