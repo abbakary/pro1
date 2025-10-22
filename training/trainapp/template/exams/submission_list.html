@@ -58,14 +58,11 @@
               <td class="text-capitalize">{{ row.status }}</td>
               <td>{% if row.score is not None %}{{ row.score }}{% else %}-{% endif %}</td>
               <td class="d-flex gap-1">
-                <a class="btn btn-sm btn-outline-primary" href="{% url 'trainingapp:mark_submission' exam.id row.driver.id %}" title="Mark questions and generate marked PDF">
-                  <i class="fas fa-check-circle"></i> Mark Exam
-                </a>
-                <a class="btn btn-sm btn-outline-secondary" href="{% url 'trainingapp:score_submission' exam.id row.driver.id %}" title="Manual score entry and file upload">
-                  <i class="fas fa-edit"></i> Score/Upload
+                <a class="btn btn-sm btn-outline-primary" href="{% url 'trainingapp:mark_submission' exam.id row.driver.id %}" title="Review and mark exam with PDF viewer">
+                  <i class="fas fa-pen-fancy"></i> Mark
                 </a>
                 <a class="btn btn-sm btn-outline-secondary" href="{% url 'trainingapp:printable_paper' exam.id row.driver.id %}" target="_blank" title="View exam paper">
-                  <i class="fas fa-file-alt"></i> Paper
+                  <i class="fas fa-file-pdf"></i> View Paper
                 </a>
                 <a class="btn btn-sm btn-outline-info" target="_blank" href="{% url 'trainingapp:exam_results_print' exam.id %}?driver_id={{ row.driver.id }}&q={{ q }}&status={{ status }}&min_score={{ min_score }}&max_score={{ max_score }}" title="Print or download results">
                   <i class="fas fa-download"></i> Download
