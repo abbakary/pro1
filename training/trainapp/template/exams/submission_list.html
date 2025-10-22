@@ -3,9 +3,14 @@
 {% block content %}
 <div class="container-fluid">
   <div class="page-title">
-    <div class="row">
+    <div class="row align-items-center">
       <div class="col-6"><h4>{{ exam.title }} — Submissions</h4></div>
-      <div class="col-6 text-end"><a class="btn btn-outline-secondary" href="{% url 'trainingapp:exam_list' %}">Back</a></div>
+      <div class="col-6 text-end">
+        <a class="btn btn-sm btn-outline-success" href="{% url 'trainingapp:create_exam_template' exam.id %}" title="Process template before marking">
+          <i class="fas fa-cog"></i> Process Template
+        </a>
+        <a class="btn btn-outline-secondary" href="{% url 'trainingapp:exam_list' %}">Back</a>
+      </div>
     </div>
   </div>
   <div class="card">
