@@ -644,6 +644,7 @@ function markAllCorrect() {
         checkbox.checked = true;
     });
     updateStats();
+    showNotification('All questions marked as correct', 'success');
 }
 
 function markAllIncorrect() {
@@ -651,6 +652,49 @@ function markAllIncorrect() {
         checkbox.checked = false;
     });
     updateStats();
+    showNotification('All questions marked as incorrect', 'warning');
+}
+
+function clearAllMarks() {
+    const confirmed = confirm('Are you sure you want to clear all marks? This cannot be undone.');
+    if (confirmed) {
+        document.querySelectorAll('.question-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        document.querySelectorAll('textarea').forEach(textarea => {
+            textarea.value = '';
+        });
+        updateStats();
+        showNotification('All marks and notes cleared', 'info');
+    }
+}
+
+function showNotification(message, type) {
+    const autoSave = document.getElementById('auto-save');
+    const enableNotifications = document.getElementById('enable-notifications');
+
+    if (!enableNotifications || !enableNotifications.checked) {
+        return;
+    }
+
+    const alertClass = `alert-${type}`;
+    const alertHTML = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+
+    const alertContainer = document.createElement('div');
+    alertContainer.innerHTML = alertHTML;
+    document.body.appendChild(alertContainer.firstElementChild);
+
+    setTimeout(() => {
+        const alert = document.body.lastElementChild;
+        if (alert && alert.classList.contains('alert')) {
+            alert.remove();
+        }
+    }, 3000);
 }
 
 document.querySelectorAll('.question-checkbox').forEach(checkbox => {
