@@ -1,0 +1,566 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="marked-submission-container">
+    <!-- Header -->
+    <div class="submission-header">
+        <div class="header-content">
+            <div class="header-info">
+                <h2 class="exam-title">{{ submission.exam.title }}</h2>
+                <p class="submission-meta">Marked on {{ submission.graded_at|date:"d M, Y H:i" }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'trainingapp:driver_submissions' submission.driver.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to My Exams
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if error %}
+    <div class="container mt-4">
+        <div class="alert alert-warning" role="alert">
+            <i class="fas fa-exclamation-circle"></i> {{ error }}
+        </div>
+        <a href="{% url 'trainingapp:driver_submissions' submission.driver.id %}" class="btn btn-outline-secondary">
+            Back to My Exams
+        </a>
+    </div>
+    {% else %}
+    <div class="viewer-layout">
+        <!-- Main PDF Viewer -->
+        <div class="pdf-viewer-section">
+            <div class="pdf-toolbar">
+                <div class="toolbar-group">
+                    <button id="pdf-prev-btn" class="toolbar-btn" title="Previous page">
+                        <i class="fas fa-chevron-up"></i>
+                    </button>
+                    <input type="number" id="pdf-page-input" min="1" value="1" class="toolbar-input" title="Go to page">
+                    <span class="page-count">of <span id="pdf-total-pages">0</span></span>
+                    <button id="pdf-next-btn" class="toolbar-btn" title="Next page">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+                <div class="toolbar-group">
+                    <button id="pdf-zoom-out-btn" class="toolbar-btn" title="Zoom out">
+                        <i class="fas fa-minus"></i>
+                    </button>
+                    <span class="zoom-level" id="pdf-zoom-level">100%</span>
+                    <button id="pdf-zoom-in-btn" class="toolbar-btn" title="Zoom in">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+                <div class="toolbar-group">
+                    {% if marked_submission.marked_pdf_file %}
+                    <a href="{{ marked_submission.marked_pdf_file.url }}" download="marked_{{ submission.driver.first_name }}_{{ submission.exam.title }}.pdf" class="toolbar-btn" title="Download PDF">
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="pdf-canvas-wrapper">
+                <canvas id="pdf-canvas" class="pdf-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Score Summary Sidebar -->
+        <div class="score-summary-sidebar">
+            <div class="summary-card">
+                <div class="summary-header">
+                    <h6><i class="fas fa-check-circle"></i> Your Score</h6>
+                </div>
+                <div class="summary-body">
+                    <div class="score-display">
+                        <div class="score-circle">
+                            <span class="score-value">{{ marked_submission.total_correct }}<span class="score-total">/{{ marked_submission.total_questions }}</span></span>
+                        </div>
+                    </div>
+                    <div class="percentage-display">
+                        <div class="percentage-badge" style="background: {% if marked_submission.get_percentage_score >= 75 %}linear-gradient(135deg, #28a745 0%, #20c997 100%){% elif marked_submission.get_percentage_score >= 50 %}linear-gradient(135deg, #ffc107 0%, #ffb300 100%){% else %}linear-gradient(135deg, #dc3545 0%, #ff6b6b 100%){% endif %};">
+                            {{ marked_submission.get_percentage_score }}%
+                        </div>
+                    </div>
+                    <div class="score-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Exam Title</span>
+                            <span class="detail-value">{{ submission.exam.title }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Total Marks</span>
+                            <span class="detail-value">{{ submission.exam.total_marks }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Marked Date</span>
+                            <span class="detail-value">{{ submission.graded_at|date:"d M, Y" }}</span>
+                        </div>
+                        {% if submission.notes %}
+                        <div class="detail-row full-width">
+                            <span class="detail-label">Grader Notes</span>
+                            <div class="detail-notes">{{ submission.notes }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <div class="info-header">
+                    <h6><i class="fas fa-info-circle"></i> Information</h6>
+                </div>
+                <div class="info-body">
+                    <div class="info-row">
+                        <span class="info-label">Total Questions</span>
+                        <span class="info-value">{{ marked_submission.total_questions }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Correct Answers</span>
+                        <span class="info-value text-success">{{ marked_submission.total_correct }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Incorrect Answers</span>
+                        <span class="info-value text-danger">{{ marked_submission.total_questions|add:-marked_submission.total_correct }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- PDF.js Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pdfDoc = null;
+let currentPage = 1;
+let zoomLevel = 1;
+const canvas = document.getElementById('pdf-canvas');
+const ctx = canvas.getContext('2d');
+const pdfUrl = '{{ marked_submission.marked_pdf_file.url }}';
+
+async function initializePDF() {
+    try {
+        pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+        document.getElementById('pdf-total-pages').textContent = pdfDoc.numPages;
+        renderPage(1);
+    } catch (error) {
+        console.error('Error loading PDF:', error);
+        document.querySelector('.pdf-canvas-wrapper').innerHTML = 
+            '<div class="alert alert-danger">Error loading PDF. Please try again.</div>';
+    }
+}
+
+async function renderPage(pageNumber) {
+    if (!pdfDoc) return;
+
+    try {
+        const page = await pdfDoc.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: zoomLevel });
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+
+        await page.render(renderContext).promise;
+        currentPage = pageNumber;
+        document.getElementById('pdf-page-input').value = pageNumber;
+    } catch (error) {
+        console.error('Error rendering page:', error);
+    }
+}
+
+// Navigation
+document.getElementById('pdf-prev-btn').addEventListener('click', () => {
+    if (currentPage > 1) renderPage(currentPage - 1);
+});
+
+document.getElementById('pdf-next-btn').addEventListener('click', () => {
+    if (pdfDoc && currentPage < pdfDoc.numPages) renderPage(currentPage + 1);
+});
+
+document.getElementById('pdf-page-input').addEventListener('change', (e) => {
+    const page = Math.max(1, Math.min(parseInt(e.target.value) || 1, pdfDoc.numPages));
+    renderPage(page);
+});
+
+// Zoom
+document.getElementById('pdf-zoom-out-btn').addEventListener('click', () => {
+    zoomLevel = Math.max(0.5, zoomLevel - 0.1);
+    document.getElementById('pdf-zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+    renderPage(currentPage);
+});
+
+document.getElementById('pdf-zoom-in-btn').addEventListener('click', () => {
+    zoomLevel = Math.min(3, zoomLevel + 0.1);
+    document.getElementById('pdf-zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+    renderPage(currentPage);
+});
+
+if (pdfUrl && pdfUrl.includes('/media/')) {
+    initializePDF();
+}
+</script>
+
+<style>
+.marked-submission-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background-color: #f5f5f5;
+}
+
+.submission-header {
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-info h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #333;
+}
+
+.submission-meta {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.viewer-layout {
+    display: flex;
+    flex: 1;
+    gap: 1px;
+    background-color: #ddd;
+    overflow: hidden;
+}
+
+.pdf-viewer-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: white;
+    overflow: hidden;
+}
+
+.pdf-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e0e0e0;
+    gap: 1rem;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toolbar-btn {
+    background: white;
+    border: 1px solid #ddd;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #333;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-btn:hover {
+    background: #e8e9f3;
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.toolbar-input {
+    width: 50px;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.page-count {
+    font-size: 0.9rem;
+    color: #666;
+    margin: 0 0.5rem;
+    white-space: nowrap;
+}
+
+.zoom-level {
+    font-size: 0.9rem;
+    color: #666;
+    min-width: 45px;
+    text-align: center;
+}
+
+.pdf-canvas-wrapper {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: #e0e0e0;
+    padding: 2rem 1rem;
+}
+
+.pdf-canvas {
+    max-width: 100%;
+    height: auto;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.score-summary-sidebar {
+    width: 320px;
+    background: white;
+    border-left: 1px solid #e0e0e0;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.summary-card,
+.info-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.summary-header,
+.info-header {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.summary-header h6,
+.info-header h6 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.summary-body,
+.info-body {
+    padding: 1.5rem 1rem;
+}
+
+.score-display {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.score-circle {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.score-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    line-height: 1;
+}
+
+.score-total {
+    font-size: 1rem;
+    margin-left: 5px;
+    opacity: 0.9;
+}
+
+.percentage-display {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.percentage-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100px;
+    height: 60px;
+    border-radius: 8px;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.score-details {
+    border-top: 1px solid #e0e0e0;
+    padding-top: 1rem;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row.full-width {
+    flex-direction: column;
+}
+
+.detail-label {
+    font-weight: 600;
+    color: #666;
+}
+
+.detail-value {
+    color: #333;
+}
+
+.detail-notes {
+    background: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #555;
+    line-height: 1.5;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.75rem 0;
+    font-size: 0.9rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #666;
+}
+
+.info-value {
+    color: #333;
+    font-weight: 500;
+}
+
+.text-success {
+    color: #28a745;
+}
+
+.text-danger {
+    color: #dc3545;
+}
+
+/* Scrollbar */
+.score-summary-sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.score-summary-sidebar::-webkit-scrollbar-track {
+    background: #f0f0f0;
+}
+
+.score-summary-sidebar::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 3px;
+}
+
+.score-summary-sidebar::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .viewer-layout {
+        flex-direction: column;
+    }
+
+    .score-summary-sidebar {
+        width: 100%;
+        max-height: 30vh;
+        border-left: none;
+        border-top: 1px solid #e0e0e0;
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+        gap: 1rem;
+    }
+
+    .summary-card,
+    .info-card {
+        flex: 0 0 auto;
+        min-width: 280px;
+    }
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .header-actions {
+        width: 100%;
+    }
+
+    .pdf-toolbar {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .toolbar-group {
+        flex: 0 1 auto;
+    }
+
+    .score-summary-sidebar {
+        flex-direction: column;
+        overflow-x: hidden;
+        overflow-y: auto;
+        max-height: none;
+    }
+
+    .summary-card,
+    .info-card {
+        min-width: auto;
+    }
+}
+</style>
+{% endblock %}

@@ -31,8 +31,11 @@
 
     <div class="col-xl-8 col-lg-7">
       <div class="card mb-3">
-        <div class="card-header pb-0"><h5 class="mb-0">Progress</h5></div>
+        <div class="card-header pb-0">
+          <h5 class="mb-0"><i class="fa fa-file-pdf"></i> My Exams & Results</h5>
+        </div>
         <div class="card-body">
+          {% if progress_rows %}
           <div class="table-responsive">
             <table class="table">
               <thead>
@@ -40,21 +43,48 @@
                   <th>Exam</th>
                   <th>Status</th>
                   <th>Score</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {% for row in progress_rows %}
                   <tr>
                     <td>{{ row.exam.title }}</td>
-                    <td class="text-capitalize">{{ row.status }}</td>
-                    <td>{% if row.score is not None %}{{ row.score }}{% else %}—{% endif %}</td>
+                    <td>
+                      {% if row.status == 'scored' %}
+                      <span class="badge bg-success">Marked</span>
+                      {% elif row.status == 'completed' %}
+                      <span class="badge bg-info">Submitted</span>
+                      {% else %}
+                      <span class="badge bg-warning">{{ row.status|title }}</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.score is not None %}
+                      <strong class="text-success">{{ row.score }}/{{ row.exam.total_marks }}</strong>
+                      {% else %}
+                      <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if row.status == 'scored' and row.marked_submission %}
+                      <a href="{% url 'trainingapp:view_marked_submission' row.submission_id %}" class="btn btn-sm btn-outline-primary">
+                        <i class="fa fa-eye"></i> View
+                      </a>
+                      {% else %}
+                      <span class="text-muted">—</span>
+                      {% endif %}
+                    </td>
                   </tr>
-                {% empty %}
-                  <tr><td colspan="3" class="text-center">No progress yet.</td></tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
+          {% else %}
+          <div class="alert alert-info mb-0">
+            <i class="fa fa-info-circle"></i> No exams assigned yet.
+          </div>
+          {% endif %}
         </div>
       </div>
 
