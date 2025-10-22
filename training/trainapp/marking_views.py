@@ -117,8 +117,15 @@ def download_marked_pdf(request, submission_id: int):
 def driver_submissions(request, driver_id: int):
     """
     Display all submissions and marked PDFs for a specific driver.
+    Staff can view any driver's submissions, drivers can only view their own.
     """
     driver = get_object_or_404(Driver, pk=driver_id)
+
+    # Check if the logged-in user is viewing their own submissions or is staff
+    if not request.user.is_staff:
+        user_driver = getattr(request.user, 'driver_profile', None)
+        if user_driver != driver:
+            raise Http404("You do not have permission to view this driver's submissions")
 
     submissions = Submission.objects.filter(driver=driver).select_related('exam').order_by('-created_at')
 
@@ -136,4 +143,33 @@ def driver_submissions(request, driver_id: int):
     return render(request, 'exams/driver_submissions.html', {
         'driver': driver,
         'submissions_with_marks': submissions_with_marks,
+    })
+
+
+@login_required
+def view_marked_submission(request, submission_id: int):
+    """
+    View a marked exam submission with PDF viewer.
+    Drivers can only view their own submissions.
+    """
+    submission = get_object_or_404(Submission, pk=submission_id)
+
+    # Check permissions - user must be staff or the submission owner (driver)
+    if not request.user.is_staff:
+        user_driver = getattr(request.user, 'driver_profile', None)
+        if user_driver != submission.driver:
+            raise Http404("You do not have permission to view this submission")
+
+    marked_submission = MarkedExamSubmission.objects.filter(submission=submission).first()
+
+    if not marked_submission or not marked_submission.is_generated:
+        return render(request, 'exams/marked_submission_viewer.html', {
+            'submission': submission,
+            'marked_submission': marked_submission,
+            'error': 'This exam paper has not been marked yet.',
+        }, status=404)
+
+    return render(request, 'exams/marked_submission_viewer.html', {
+        'submission': submission,
+        'marked_submission': marked_submission,
     })
