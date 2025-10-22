@@ -109,7 +109,7 @@
                         </div>
                         <div class="stat-row">
                             <span class="stat-label">Incorrect</span>
-                            <span class="stat-value text-danger" id="incorrect-count">{{ total_questions|add:total_correct|add:"-1"|add:"1" }}</span>
+                            <span class="stat-value text-danger" id="incorrect-count">{{ total_questions|add:"-"|add:total_correct }}</span>
                         </div>
                     </div>
 
