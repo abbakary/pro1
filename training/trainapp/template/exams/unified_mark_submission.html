@@ -168,7 +168,7 @@
                         
                         <div class="questions-grid">
                             {% for question in questions %}
-                            <div class="question-marking-item" data-question="{% endfor %}">
+                            <div class="question-marking-item" data-question="{{ question.number }}">
                                 <div class="question-header">
                                     <div class="question-number-badge">Q{{ question.number }}</div>
                                     <div class="question-toggle">
