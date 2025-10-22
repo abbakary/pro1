@@ -55,23 +55,47 @@
                     <div class="tab-content marking-document-viewer">
                         <div class="tab-pane fade show active" id="exam-document" role="tabpanel" aria-labelledby="exam-tab">
                             {% if exam.file %}
-                            <iframe src="{{ exam.file.url }}" type="application/pdf" width="100%" height="600" style="border: none;"></iframe>
+                            <div class="document-container">
+                                <iframe src="{{ exam.file.url }}#toolbar=0" type="application/pdf" width="100%" height="600" style="border: none;"></iframe>
+                                <div class="document-info">
+                                    <a href="{{ exam.file.url }}" download="{{ exam.title }}.pdf" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-download"></i> Download PDF
+                                    </a>
+                                </div>
+                            </div>
                             {% else %}
-                            <div class="alert alert-warning mb-0">No exam file available</div>
+                            <div class="alert alert-warning mb-0"><i class="fas fa-exclamation-triangle"></i> No exam file available</div>
                             {% endif %}
                         </div>
 
                         <div class="tab-pane fade" id="submission-document" role="tabpanel" aria-labelledby="submission-tab">
                             {% if submission.scanned_file %}
-                            <iframe src="{{ submission.scanned_file.url }}" type="application/pdf" width="100%" height="600" style="border: none;"></iframe>
+                            <div class="document-container">
+                                <iframe src="{{ submission.scanned_file.url }}#toolbar=0" type="application/pdf" width="100%" height="600" style="border: none;"></iframe>
+                                <div class="document-info">
+                                    <a href="{{ submission.scanned_file.url }}" download="submission_{{ submission.driver.first_name }}.pdf" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-download"></i> Download PDF
+                                    </a>
+                                </div>
+                            </div>
                             {% else %}
-                            <div class="alert alert-info mb-0">No student submission file available</div>
+                            <div class="alert alert-info mb-0"><i class="fas fa-info-circle"></i> No student submission file available. The answer sheet will be generated once marking is completed.</div>
                             {% endif %}
                         </div>
 
                         {% if marked_submission and marked_submission.is_generated and marked_submission.marked_pdf_file %}
                         <div class="tab-pane fade" id="marked-document" role="tabpanel" aria-labelledby="marked-tab">
-                            <iframe src="{{ marked_submission.marked_pdf_file.url }}" type="application/pdf" width="100%" height="600" style="border: none;"></iframe>
+                            <div class="document-container">
+                                <iframe src="{{ marked_submission.marked_pdf_file.url }}#toolbar=0" type="application/pdf" width="100%" height="600" style="border: none;"></iframe>
+                                <div class="document-info">
+                                    <div class="marked-success-badge">
+                                        <i class="fas fa-check-circle"></i> Generated {{ marked_submission.created_at|date:"d-m-Y H:i" }}
+                                    </div>
+                                    <a href="{{ marked_submission.marked_pdf_file.url }}" download="marked_{{ submission.driver.first_name }}_{{ exam.title }}.pdf" class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-download"></i> Download Marked PDF
+                                    </a>
+                                </div>
+                            </div>
                         </div>
                         {% endif %}
                     </div>
