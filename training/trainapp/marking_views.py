@@ -33,18 +33,27 @@ def create_exam_template(request, exam_id: int):
     exam = get_object_or_404(ExamPaper, pk=exam_id)
 
     if not exam.file:
-        messages.error(request, "Exam does not have a file attached")
+        messages.error(request, "Exam does not have a file attached. Please upload an exam file first.")
         return redirect('trainingapp:exam_list')
 
     try:
         file_path = exam.file.path
-        
+
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Exam file not found at: {file_path}")
+
         detector = PDFQuestionDetector(file_path)
         detector.open_pdf()
         question_mapping = detector.detect_questions()
         detected_count = detector.get_detected_question_count()
         detector.close_pdf()
-        
+
+        if detected_count == 0:
+            messages.warning(
+                request,
+                "Template created but no questions were detected. Please check the PDF format."
+            )
+
         template, created = ExamTemplate.objects.update_or_create(
             exam=exam,
             defaults={
@@ -54,7 +63,7 @@ def create_exam_template(request, exam_id: int):
                 'detected_question_count': detected_count,
             }
         )
-        
+
         AuditHistory.objects.create(
             action='create_template' if created else 'update_template',
             entity_type='ExamTemplate',
@@ -62,14 +71,17 @@ def create_exam_template(request, exam_id: int):
             user=request.user,
             details={'exam_id': exam.id, 'detected_questions': detected_count},
         )
-        
-        messages.success(
-            request,
-            f"Template created/updated. Detected {detected_count} questions."
-        )
+
+        if detected_count > 0:
+            messages.success(
+                request,
+                f"Template {'created' if created else 'updated'} successfully. Detected {detected_count} questions."
+            )
+    except FileNotFoundError as e:
+        messages.error(request, f"File error: {str(e)}")
     except Exception as e:
-        messages.error(request, f"Error creating template: {str(e)}")
-    
+        messages.error(request, f"Error processing template: {str(e)}")
+
     return redirect('trainingapp:exam_list')
 
 
@@ -467,6 +479,7 @@ def unified_mark_submission(request, exam_id: int, driver_id: int):
 
     total_questions = len(questions)
     total_correct = sum(1 for q in questions if q['is_correct'])
+    total_incorrect = total_questions - total_correct
     percentage = round((total_correct / total_questions * 100), 2) if total_questions > 0 else 0
 
     return render(request, 'exams/unified_mark_submission.html', {
@@ -478,6 +491,7 @@ def unified_mark_submission(request, exam_id: int, driver_id: int):
         'marked_submission': marked_submission,
         'total_questions': total_questions,
         'total_correct': total_correct,
+        'total_incorrect': total_incorrect,
         'percentage': percentage,
     })
 

@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+{% block title %}{{ driver.first_name }} {{ driver.last_name }} - Driver Details{% endblock %}
+
+{% block extra_css %}
+<style>
+  .driver-detail-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .driver-avatar-large {
+    width: 120px;
+    height: 120px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: bold;
+    flex-shrink: 0;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .driver-avatar-large img {
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    object-fit: cover;
+  }
+
+  .driver-header-info {
+    flex: 1;
+  }
+
+  .driver-header-info h2 {
+    margin: 0;
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .driver-header-info p {
+    margin: 0.25rem 0;
+    opacity: 0.95;
+  }
+
+  .driver-header-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .btn-group-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid #667eea;
+  }
+
+  .stat-card.pending {
+    border-left-color: #ffc107;
+  }
+
+  .stat-card.scored {
+    border-left-color: #28a745;
+  }
+
+  .stat-card.assigned {
+    border-left-color: #17a2b8;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #667eea;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-card.pending .stat-value {
+    color: #ffc107;
+  }
+
+  .stat-card.scored .stat-value {
+    color: #28a745;
+  }
+
+  .stat-card.assigned .stat-value {
+    color: #17a2b8;
+  }
+
+  .stat-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+  }
+
+  .stat-percentage {
+    font-size: 0.85rem;
+    color: #999;
+  }
+
+  .info-section {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #333;
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #667eea;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-title i {
+    color: #667eea;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .info-item {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .info-label {
+    font-weight: 600;
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+  }
+
+  .info-value {
+    color: #333;
+    font-size: 1rem;
+    word-break: break-word;
+  }
+
+  .info-value.phone {
+    font-family: monospace;
+  }
+
+  .submissions-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+  }
+
+  .submissions-table thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+
+  .submissions-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+  }
+
+  .submissions-table td {
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .submissions-table tbody tr:hover {
+    background: #f8f9fa;
+  }
+
+  .submissions-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .badge-status {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .badge-pending {
+    background: #fff3cd;
+    color: #856404;
+  }
+
+  .badge-scored {
+    background: #d4edda;
+    color: #155724;
+  }
+
+  .score-display {
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  .no-submissions {
+    text-align: center;
+    padding: 2rem;
+    color: #999;
+  }
+
+  .action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 0.95rem;
+  }
+
+  .action-button-primary {
+    background: #667eea;
+    color: white;
+  }
+
+  .action-button-primary:hover {
+    background: #5568d3;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+
+  .action-button-secondary {
+    background: #e9ecef;
+    color: #333;
+  }
+
+  .action-button-secondary:hover {
+    background: #dee2e6;
+  }
+
+  .action-button-success {
+    background: #28a745;
+    color: white;
+  }
+
+  .action-button-success:hover {
+    background: #218838;
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+  }
+
+  .breadcrumb-nav {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .breadcrumb-nav a {
+    color: #667eea;
+    text-decoration: none;
+  }
+
+  .breadcrumb-nav a:hover {
+    text-decoration: underline;
+  }
+
+  .breadcrumb-nav .separator {
+    color: #ccc;
+  }
+
+  @media (max-width: 768px) {
+    .driver-detail-header {
+      flex-direction: column;
+      text-align: center;
+    }
+
+    .driver-header-info h2 {
+      font-size: 1.5rem;
+    }
+
+    .driver-header-actions {
+      justify-content: center;
+      width: 100%;
+    }
+
+    .stat-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .info-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .submissions-table {
+      font-size: 0.9rem;
+    }
+
+    .submissions-table th,
+    .submissions-table td {
+      padding: 0.75rem;
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+    }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="breadcrumb-nav">
+    <a href="{% url 'trainingapp:dashboard' %}"><i class="fas fa-home"></i> Dashboard</a>
+    <span class="separator">/</span>
+    <a href="{% url 'trainingapp:driver_list' %}"><i class="fas fa-users"></i> Drivers</a>
+    <span class="separator">/</span>
+    <span><i class="fas fa-user"></i> {{ driver.first_name }} {{ driver.last_name }}</span>
+  </div>
+
+  <div class="driver-detail-header">
+    <div class="driver-avatar-large">
+      {% if driver.profile_photo %}
+        <img src="{{ driver.profile_photo.url }}" alt="{{ driver.first_name }}">
+      {% else %}
+        {{ driver.first_name|first|upper }}
+      {% endif %}
+    </div>
+
+    <div class="driver-header-info">
+      <h2>{{ driver.first_name }} {{ driver.last_name }}</h2>
+      {% if driver.license_no %}
+        <p><strong>License No:</strong> {{ driver.license_no }}</p>
+      {% endif %}
+      {% if driver.batch %}
+        <p><strong>Batch:</strong> <span class="badge" style="background: #667eea; color: white;">{{ driver.batch.name }}</span></p>
+      {% else %}
+        <p><span class="badge" style="background: #ffc107; color: #333;">Not Assigned to Batch</span></p>
+      {% endif %}
+      {% if driver.company %}
+        <p><strong>Company:</strong> {{ driver.company }}</p>
+      {% endif %}
+      <p><strong>Member Since:</strong> {{ driver.created_at|date:"d F, Y" }}</p>
+    </div>
+
+    <div class="driver-header-actions">
+      <a href="{% url 'trainingapp:download_driver_pdf' driver.id %}" class="action-button action-button-success">
+        <i class="fas fa-download"></i> Download PDF
+      </a>
+      <a href="{% url 'trainingapp:driver_edit' driver.id %}" class="action-button action-button-primary">
+        <i class="fas fa-edit"></i> Edit Profile
+      </a>
+      <a href="{% url 'trainingapp:driver_list' %}" class="action-button action-button-secondary">
+        <i class="fas fa-arrow-left"></i> Back to List
+      </a>
+    </div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card assigned">
+      <div class="stat-label">Exams Assigned</div>
+      <div class="stat-value">{{ statistics.total_exams }}</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-label">Exams Completed</div>
+      <div class="stat-value">{{ statistics.completed_exams }}</div>
+    </div>
+
+    <div class="stat-card scored">
+      <div class="stat-label">Exams Scored</div>
+      <div class="stat-value">{{ statistics.scored_exams }}</div>
+      {% if statistics.scored_exams > 0 %}
+        <div class="stat-percentage">Avg: {{ statistics.average_percentage }}%</div>
+      {% endif %}
+    </div>
+
+    <div class="stat-card pending">
+      <div class="stat-label">Pending Scoring</div>
+      <div class="stat-value">{{ statistics.pending_exams }}</div>
+    </div>
+  </div>
+
+  <div class="info-section">
+    <h3 class="section-title">
+      <i class="fas fa-address-card"></i> Contact Information
+    </h3>
+    <div class="info-grid">
+      <div class="info-item">
+        <span class="info-label">Phone Number</span>
+        <span class="info-value phone">{{ driver.phone|default:"Not provided" }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Company</span>
+        <span class="info-value">{{ driver.company|default:"Not provided" }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">License Number</span>
+        <span class="info-value">{{ driver.license_no|default:"Not provided" }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Assigned Batch</span>
+        <span class="info-value">
+          {% if driver.batch %}
+            <span class="badge" style="background: #667eea; color: white;">{{ driver.batch.name }}</span>
+          {% else %}
+            <span class="badge" style="background: #e9ecef; color: #333;">Not Assigned</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Profile Created</span>
+        <span class="info-value">{{ driver.created_at|date:"d M, Y at H:i" }}</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Last Updated</span>
+        <span class="info-value">{{ driver.updated_at|date:"d M, Y at H:i" }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-section">
+    <h3 class="section-title">
+      <i class="fas fa-file-pdf"></i> Exam Submission History
+    </h3>
+
+    {% if submissions_with_details %}
+      <div style="overflow-x: auto;">
+        <table class="submissions-table">
+          <thead>
+            <tr>
+              <th style="width: 30%;">Exam Title</th>
+              <th style="width: 15%;">Submitted</th>
+              <th style="width: 15%;">Score</th>
+              <th style="width: 12%;">Percentage</th>
+              <th style="width: 12%;">Status</th>
+              <th style="width: 16%;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in submissions_with_details %}
+              <tr>
+                <td>
+                  <strong>{{ item.exam.title }}</strong>
+                  <br>
+                  <small style="color: #999;">Total Marks: {{ item.exam.total_marks }}</small>
+                </td>
+                <td>{{ item.submission.created_at|date:"d M, Y" }}</td>
+                <td>
+                  <div class="score-display">
+                    {% if item.submission.score %}
+                      {{ item.submission.score }}/{{ item.exam.total_marks }}
+                    {% else %}
+                      <span style="color: #999;">—</span>
+                    {% endif %}
+                  </div>
+                </td>
+                <td>
+                  {% if item.score_percentage %}
+                    <div style="font-weight: 600; color: #667eea;">{{ item.score_percentage }}%</div>
+                    <div style="width: 100%; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden; margin-top: 0.25rem;">
+                      <div style="width: {{ item.score_percentage }}%; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2);"></div>
+                    </div>
+                  {% else %}
+                    <span style="color: #999;">—</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge-status {% if item.status == 'Scored' %}badge-scored{% else %}badge-pending{% endif %}">
+                    {{ item.status }}
+                  </span>
+                </td>
+                <td>
+                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <a href="{% url 'trainingapp:mark_submission' item.exam.id driver.id %}" class="action-button" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                      <i class="fas fa-pencil"></i> Mark
+                    </a>
+                    {% if item.marked_submission and item.marked_submission.marked_pdf_file %}
+                      <a href="{{ item.marked_submission.marked_pdf_file.url }}" target="_blank" class="action-button" style="font-size: 0.85rem; padding: 0.5rem 0.75rem; background: #28a745; color: white;">
+                        <i class="fas fa-download"></i> PDF
+                      </a>
+                    {% endif %}
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="no-submissions">
+        <i class="fas fa-inbox" style="font-size: 2rem; color: #ddd; margin-bottom: 1rem;"></i>
+        <p>No submissions yet. Once the driver completes an exam, it will appear here.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

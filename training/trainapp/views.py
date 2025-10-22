@@ -3,14 +3,16 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction, models
 from django.db.models import Q, Count, Avg
-from django.http import Http404, JsonResponse
+from django.http import Http404, JsonResponse, FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 import json
+import os
 
 from .forms import BatchForm, DriverForm, ExamUploadForm, ScoreForm, TimetableEntryForm, NotificationForm, NotificationResponseForm
 from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Submission, TimetableEntry, Notification, NotificationReceipt
+from .pdf_utils import generate_driver_detail_pdf
 
 
 
@@ -151,6 +153,96 @@ def driver_create(request):
 
 
 @staff_member_required
+def driver_detail(request, pk: int):
+    """
+    Display comprehensive driver information including profile, contact details,
+    exam history, scores, and submission status.
+    """
+    driver = get_object_or_404(Driver, pk=pk)
+
+    distributions = ExamDistribution.objects.filter(driver=driver).select_related('exam').order_by('-created_at')
+    submissions = Submission.objects.filter(driver=driver).select_related('exam').order_by('-created_at')
+
+    submissions_with_details = []
+    for sub in submissions:
+        marked_sub = sub.marked_version if hasattr(sub, 'marked_version') else None
+        question_count = sub.question_answers.count()
+
+        submissions_with_details.append({
+            'submission': sub,
+            'exam': sub.exam,
+            'marked_submission': marked_sub,
+            'question_count': question_count,
+            'is_marked': question_count > 0,
+            'score_percentage': round((float(sub.score) / sub.exam.total_marks * 100), 2) if sub.score else None,
+            'status': 'Scored' if sub.score else 'Pending',
+        })
+
+    statistics = {
+        'total_exams': distributions.count(),
+        'completed_exams': submissions.count(),
+        'scored_exams': submissions.exclude(score__isnull=True).count(),
+        'pending_exams': submissions.filter(score__isnull=True).count(),
+        'average_score': submissions.exclude(score__isnull=True).aggregate(avg=Avg('score'))['avg'] or 0,
+    }
+
+    if statistics['scored_exams'] > 0:
+        statistics['average_percentage'] = round(
+            (statistics['average_score'] / 100 * 100), 2
+        )
+    else:
+        statistics['average_percentage'] = 0
+
+    context = {
+        'driver': driver,
+        'distributions': distributions,
+        'submissions_with_details': submissions_with_details,
+        'statistics': statistics,
+    }
+
+    return render(request, 'drivers/driver_detail.html', context)
+
+
+@staff_member_required
+def download_driver_pdf(request, pk: int):
+    """
+    Generate and download a comprehensive PDF report of the driver's profile and exam history.
+    """
+    driver = get_object_or_404(Driver, pk=pk)
+
+    submissions = Submission.objects.filter(driver=driver).select_related('exam').order_by('-created_at')
+
+    submissions_data = []
+    for sub in submissions:
+        submissions_data.append({
+            'submission': sub,
+            'exam': sub.exam,
+            'status': 'Scored' if sub.score else 'Pending',
+        })
+
+    try:
+        pdf_path = generate_driver_detail_pdf(driver, submissions_data)
+
+        response = FileResponse(open(pdf_path, 'rb'), content_type='application/pdf')
+        filename = f"driver_profile_{driver.first_name}_{driver.last_name}_{timezone.now().strftime('%Y%m%d')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        AuditHistory.objects.create(
+            action='download_driver_pdf',
+            entity_type='Driver',
+            entity_id=str(driver.id),
+            user=request.user,
+            details={'driver_name': f"{driver.first_name} {driver.last_name}"},
+        )
+
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Error generating PDF: {str(e)}")
+        return redirect('trainingapp:driver_detail', pk=pk)
+
+
+@staff_member_required
 def driver_edit(request, pk: int):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == "POST":
@@ -165,7 +257,7 @@ def driver_edit(request, pk: int):
                 details={"first_name": driver.first_name},
             )
             messages.success(request, "Driver updated successfully")
-            return redirect("trainingapp:driver_list")
+            return redirect("trainingapp:driver_detail", pk=driver.id)
     else:
         form = DriverForm(instance=driver)
     return render(request, "drivers/driver_form.html", {"form": form, "title": "Edit Driver"})

@@ -3,6 +3,7 @@ import re
 import tempfile
 from pathlib import Path
 from typing import Dict, List, Tuple, Any, Optional
+from django.utils import timezone
 
 try:
     import fitz
@@ -298,7 +299,7 @@ def mark_pdf_submission(
 ) -> bool:
     """
     Create a marked PDF submission with overlaid marks and score summary.
-    
+
     Args:
         source_pdf: Path to the original exam PDF
         output_pdf: Path where the marked PDF will be saved
@@ -307,7 +308,7 @@ def mark_pdf_submission(
         marks: Dictionary mapping question number to True (correct) or False (incorrect)
         question_mapping: Question position mapping from template
         exam_date: Date of the exam
-    
+
     Returns:
         True if successful, False otherwise
     """
@@ -315,16 +316,243 @@ def mark_pdf_submission(
     try:
         marker.open_pdf()
         marker.set_question_mapping(question_mapping)
-        
+
         correct_count = sum(1 for is_correct in marks.values() if is_correct)
         total_questions = len(marks)
-        
+
         marker.overlay_marks(marks)
         marker.add_score_summary(driver_name, exam_title, correct_count, total_questions, exam_date)
         marker.save_marked_pdf()
-        
+
         return True
     except Exception as e:
         raise ValueError(f"Error marking PDF: {str(e)}")
     finally:
         marker.close_pdf()
+
+
+def generate_driver_detail_pdf(driver, submissions_data: List[Dict[str, Any]]) -> str:
+    """
+    Generate a comprehensive PDF report of a driver's profile and exam history.
+
+    Args:
+        driver: Driver instance
+        submissions_data: List of submission data dictionaries
+
+    Returns:
+        Path to the generated PDF file
+    """
+    if fitz is None:
+        raise ImportError("PyMuPDF (fitz) is required for PDF processing. Install it with: pip install PyMuPDF")
+
+    try:
+        doc = fitz.open()
+        page = doc.new_page()
+
+        y_pos = 40
+        line_height = 22
+        section_height = 28
+
+        header_color = (51, 126, 234)
+        text_color = (0, 0, 0)
+
+        page.insert_text(
+            (40, y_pos),
+            "DRIVER PROFILE & EXAM HISTORY REPORT",
+            fontsize=18,
+            color=header_color,
+            fontname="helv-Bold"
+        )
+        y_pos += section_height
+
+        page.insert_text(
+            (40, y_pos),
+            "─" * 90,
+            fontsize=10,
+            color=header_color,
+        )
+        y_pos += line_height
+
+        page.insert_text(
+            (40, y_pos),
+            "DRIVER INFORMATION",
+            fontsize=14,
+            color=header_color,
+            fontname="helv-Bold"
+        )
+        y_pos += line_height
+
+        driver_info = [
+            ("Name:", f"{driver.first_name} {driver.last_name}"),
+            ("License No:", driver.license_no or "N/A"),
+            ("Company:", driver.company or "N/A"),
+            ("Batch:", driver.batch.name if driver.batch else "Not Assigned"),
+            ("Phone:", driver.phone or "N/A"),
+            ("Profile Created:", driver.created_at.strftime("%d-%m-%Y %H:%M")),
+            ("Last Updated:", driver.updated_at.strftime("%d-%m-%Y %H:%M")),
+        ]
+
+        for label, value in driver_info:
+            page.insert_text(
+                (60, y_pos),
+                f"{label}",
+                fontsize=11,
+                color=text_color,
+                fontname="helv-Bold"
+            )
+            page.insert_text(
+                (200, y_pos),
+                str(value),
+                fontsize=11,
+                color=text_color,
+                fontname="helv"
+            )
+            y_pos += line_height
+
+        y_pos += section_height // 2
+
+        page.insert_text(
+            (40, y_pos),
+            "─" * 90,
+            fontsize=10,
+            color=header_color,
+        )
+        y_pos += line_height
+
+        page.insert_text(
+            (40, y_pos),
+            "EXAM SUBMISSION HISTORY",
+            fontsize=14,
+            color=header_color,
+            fontname="helv-Bold"
+        )
+        y_pos += line_height
+
+        if submissions_data:
+            x_exam = 60
+            x_date = 250
+            x_score = 400
+            x_status = 500
+
+            page.insert_text(
+                (x_exam, y_pos),
+                "Exam Title",
+                fontsize=10,
+                color=header_color,
+                fontname="helv-Bold"
+            )
+            page.insert_text(
+                (x_date, y_pos),
+                "Date",
+                fontsize=10,
+                color=header_color,
+                fontname="helv-Bold"
+            )
+            page.insert_text(
+                (x_score, y_pos),
+                "Score",
+                fontsize=10,
+                color=header_color,
+                fontname="helv-Bold"
+            )
+            page.insert_text(
+                (x_status, y_pos),
+                "Status",
+                fontsize=10,
+                color=header_color,
+                fontname="helv-Bold"
+            )
+            y_pos += line_height
+
+            page.insert_text(
+                (40, y_pos),
+                "─" * 90,
+                fontsize=10,
+                color=header_color,
+            )
+            y_pos += line_height
+
+            for sub in submissions_data:
+                submission = sub['submission']
+                exam = sub['exam']
+
+                exam_title = exam.title[:40]
+                date_str = submission.created_at.strftime("%d-%m-%Y")
+                score_str = f"{submission.score}/{exam.total_marks}" if submission.score else "Pending"
+                status_str = sub['status']
+
+                page.insert_text(
+                    (x_exam, y_pos),
+                    exam_title,
+                    fontsize=10,
+                    color=text_color,
+                    fontname="helv"
+                )
+                page.insert_text(
+                    (x_date, y_pos),
+                    date_str,
+                    fontsize=10,
+                    color=text_color,
+                    fontname="helv"
+                )
+                page.insert_text(
+                    (x_score, y_pos),
+                    score_str,
+                    fontsize=10,
+                    color=text_color,
+                    fontname="helv"
+                )
+
+                status_color = (0, 128, 0) if status_str == "Scored" else (255, 140, 0)
+                page.insert_text(
+                    (x_status, y_pos),
+                    status_str,
+                    fontsize=10,
+                    color=status_color,
+                    fontname="helv-Bold"
+                )
+                y_pos += line_height
+
+                if y_pos > 750:
+                    page = doc.new_page()
+                    y_pos = 40
+
+            y_pos += line_height
+        else:
+            page.insert_text(
+                (60, y_pos),
+                "No submissions yet.",
+                fontsize=11,
+                color=text_color,
+                fontname="helv"
+            )
+            y_pos += line_height
+
+        page.insert_text(
+            (40, y_pos),
+            "─" * 90,
+            fontsize=10,
+            color=header_color,
+        )
+        y_pos += line_height
+
+        page.insert_text(
+            (40, y_pos),
+            f"Report Generated: {timezone.now().strftime('%d-%m-%Y %H:%M:%S')}",
+            fontsize=9,
+            color=(128, 128, 128),
+            fontname="helv"
+        )
+
+        output_path = os.path.join(
+            tempfile.gettempdir(),
+            f"driver_report_{driver.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        )
+
+        doc.save(output_path)
+        doc.close()
+
+        return output_path
+
+    except Exception as e:
+        raise ValueError(f"Error generating driver detail PDF: {str(e)}")
