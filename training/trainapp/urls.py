@@ -40,7 +40,8 @@ urlpatterns = [
 
     # Exam Templates & Marking
     path('exams/<int:exam_id>/create-template/', create_exam_template, name='create_exam_template'),
-    path('exams/<int:exam_id>/mark/<int:driver_id>/', mark_submission_form, name='mark_submission'),
+    path('exams/<int:exam_id>/mark/<int:driver_id>/', unified_mark_submission, name='mark_submission'),
+    path('exams/<int:exam_id>/mark-legacy/<int:driver_id>/', mark_submission_form, name='mark_submission_legacy'),
     path('submissions/<int:submission_id>/view-marked/', view_marked_submission, name='view_marked_submission'),
     path('submissions/<int:submission_id>/download-marked-pdf/', download_marked_pdf, name='download_marked_pdf'),
 
