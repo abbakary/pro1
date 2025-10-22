@@ -3,7 +3,7 @@ from . import views
 from .marking_views import (
     create_exam_template, mark_submission_form, api_mark_question,
     api_generate_marked_pdf, view_marked_submission, download_marked_pdf,
-    submission_marking_stats, driver_submissions
+    submission_marking_stats, driver_submissions, unified_mark_submission
 )
 
 app_name = 'trainingapp'
