@@ -263,15 +263,48 @@
 
 .marking-document-viewer .tab-pane {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     min-height: 600px;
     background-color: #f0f0f0;
+    padding: 15px;
 }
 
-.marking-document-viewer iframe {
+.document-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.document-container iframe {
     background-color: white;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    flex: 1;
+    border-radius: 4px;
+}
+
+.document-info {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 15px;
+    background-color: white;
+    border-radius: 4px;
+    margin-top: 10px;
+}
+
+.marked-success-badge {
+    padding: 8px 12px;
+    background-color: #d4edda;
+    color: #155724;
+    border-radius: 4px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-right: auto;
 }
 
 .nav-dark .nav-link {
