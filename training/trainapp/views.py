@@ -615,13 +615,20 @@ def driver_portal(request):
         .order_by('-created_at')
     )
     submissions = {s.exam_id: s for s in Submission.objects.filter(driver=driver)}
+    marked_submissions = {
+        ms.submission.exam_id: ms
+        for ms in MarkedExamSubmission.objects.filter(submission__driver=driver)
+    }
     progress_rows = []
     for dist in distributions:
         sub = submissions.get(dist.exam_id)
+        marked_sub = marked_submissions.get(dist.exam_id)
         progress_rows.append({
             'exam': dist.exam,
             'status': dist.status,
             'score': sub.score if sub else None,
+            'submission_id': sub.id if sub else None,
+            'marked_submission': marked_sub,
         })
 
     upcoming = (
