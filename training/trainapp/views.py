@@ -11,7 +11,7 @@ import json
 import os
 
 from .forms import BatchForm, DriverForm, ExamUploadForm, ScoreForm, TimetableEntryForm, NotificationForm, NotificationResponseForm
-from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Submission, TimetableEntry, Notification, NotificationReceipt
+from .models import AuditHistory, Batch, Driver, ExamDistribution, ExamPaper, Submission, TimetableEntry, Notification, NotificationReceipt, MarkedExamSubmission
 from .pdf_utils import generate_driver_detail_pdf
 
 
