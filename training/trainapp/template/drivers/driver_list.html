@@ -359,14 +359,14 @@
                   </td>
                   <td>
                     <div class="action-buttons">
+                      <a class="btn" href="{% url 'trainingapp:driver_detail' d.id %}" title="View full profile and exam history">
+                        <i class="fa fa-user"></i> Profile
+                      </a>
                       <a class="btn" href="{% url 'trainingapp:driver_edit' d.id %}">
                         <i class="fa fa-pencil"></i> Edit
                       </a>
                       <a class="btn" href="{% url 'trainingapp:driver_submissions' d.id %}">
                         <i class="fa fa-file-pdf-o"></i> PDFs
-                      </a>
-                      <a class="btn" href="{% url 'trainingapp:exam_list' %}" title="View Exams" target="_blank">
-                        <i class="fa fa-chart-bar"></i> Exams
                       </a>
                     </div>
                   </td>
