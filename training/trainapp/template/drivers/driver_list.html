@@ -306,20 +306,22 @@
               {% for d in drivers %}
                 <tr data-driver-id="{{ d.id }}" data-batch-id="{% if d.batch %}{{ d.batch.id }}{% endif %}">
                   <td>
-                    <div class="driver-info">
-                      <div class="driver-avatar">
-                        {% if d.profile_photo %}
-                          <img src="{{ d.profile_photo.url }}" alt="{{ d.first_name }}">
-                        {% else %}
-                          {{ d.first_name|first|upper }}
-                        {% endif %}
-                      </div>
-                      <div>
-                        <div class="driver-name">{{ d.first_name }} {{ d.last_name }}</div>
-                        <div class="driver-license">{{ d.license_no|default:"No License" }}</div>
-                      </div>
+                <a href="{% url 'trainingapp:driver_detail' d.id %}" style="text-decoration: none; color: inherit;">
+                  <div class="driver-info">
+                    <div class="driver-avatar">
+                      {% if d.profile_photo %}
+                        <img src="{{ d.profile_photo.url }}" alt="{{ d.first_name }}">
+                      {% else %}
+                        {{ d.first_name|first|upper }}
+                      {% endif %}
                     </div>
-                  </td>
+                    <div>
+                      <div class="driver-name">{{ d.first_name }} {{ d.last_name }}</div>
+                      <div class="driver-license">{{ d.license_no|default:"No License" }}</div>
+                    </div>
+                  </div>
+                </a>
+              </td>
                   <td>
                     <div>
                       {% if d.phone %}
