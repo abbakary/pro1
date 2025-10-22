@@ -118,7 +118,7 @@
                     </div>
                     <div class="info-row">
                         <span class="info-label">Incorrect Answers</span>
-                        <span class="info-value text-danger">{{ marked_submission.total_questions|add:marked_submission.total_correct|add:"-1" }}</span>
+                        <span class="info-value text-danger">{{ marked_submission.total_questions|add:-marked_submission.total_correct }}</span>
                     </div>
                 </div>
             </div>
