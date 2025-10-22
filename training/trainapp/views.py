@@ -204,6 +204,45 @@ def driver_detail(request, pk: int):
 
 
 @staff_member_required
+def download_driver_pdf(request, pk: int):
+    """
+    Generate and download a comprehensive PDF report of the driver's profile and exam history.
+    """
+    driver = get_object_or_404(Driver, pk=pk)
+
+    submissions = Submission.objects.filter(driver=driver).select_related('exam').order_by('-created_at')
+
+    submissions_data = []
+    for sub in submissions:
+        submissions_data.append({
+            'submission': sub,
+            'exam': sub.exam,
+            'status': 'Scored' if sub.score else 'Pending',
+        })
+
+    try:
+        pdf_path = generate_driver_detail_pdf(driver, submissions_data)
+
+        response = FileResponse(open(pdf_path, 'rb'), content_type='application/pdf')
+        filename = f"driver_profile_{driver.first_name}_{driver.last_name}_{timezone.now().strftime('%Y%m%d')}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+        AuditHistory.objects.create(
+            action='download_driver_pdf',
+            entity_type='Driver',
+            entity_id=str(driver.id),
+            user=request.user,
+            details={'driver_name': f"{driver.first_name} {driver.last_name}"},
+        )
+
+        return response
+
+    except Exception as e:
+        messages.error(request, f"Error generating PDF: {str(e)}")
+        return redirect('trainingapp:driver_detail', pk=pk)
+
+
+@staff_member_required
 def driver_edit(request, pk: int):
     driver = get_object_or_404(Driver, pk=pk)
     if request.method == "POST":
