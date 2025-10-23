@@ -697,10 +697,15 @@ function updateScoreDisplay() {
     document.getElementById('percentage-text').textContent = Math.round(percentage) + '%';
 }
 
-function updateQuestionUI(questionNum) {
-    const checkbox = document.getElementById(`question_${questionNum}_correct`);
-    const card = document.getElementById(`question_${questionNum}`);
-    const status = document.getElementById(`status_${questionNum}`);
+function updateQuestionUI(questionId) {
+    const safeId = String(questionId);
+    const checkbox = document.getElementById(`question_${safeId}_correct`);
+    const card = document.getElementById(`question_${safeId}`);
+    const status = document.getElementById(`status_${safeId}`);
+
+    if (!checkbox || !card || !status) {
+        return;
+    }
 
     card.classList.remove('marked-correct', 'marked-incorrect');
     status.innerHTML = '';
