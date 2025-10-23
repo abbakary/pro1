@@ -16,9 +16,10 @@ from django.views.decorators.http import require_http_methods
 
 from .models import (
     ExamPaper, Driver, Submission, ExamDistribution,
-    MarkedExamSubmission, AuditHistory
+    MarkedExamSubmission, AuditHistory, QuestionAnswer, ExamTemplate
 )
-from .pdf_utils import PDFMarker
+from .pdf_utils import PDFMarker, detect_questions_in_pdf, mark_pdf_submission
+from .forms import FastExamMarkingForm
 
 
 @staff_member_required
