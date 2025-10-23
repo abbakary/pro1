@@ -90,32 +90,49 @@ class PDFQuestionDetector:
         
         return text_blocks
     
-    def detect_questions(self) -> Dict[int, Dict[str, Any]]:
-        """Detect question numbers and their positions in the PDF."""
+    def detect_questions(self) -> Dict[str, Dict[str, Any]]:
+        """Detect question numbers and their positions in the PDF.
+
+        Returns a mapping of question identifiers to their positions.
+        For simple questions: "1", "2", "3", etc.
+        For sub-part questions: "1a", "1b", "2a", "2b", etc.
+        """
         text_blocks = self.extract_text_with_coordinates()
-        
+
         question_mapping = {}
         detected_questions = []
-        
+
         for block in text_blocks:
             text = block["text"]
-            for pattern in self.QUESTION_PATTERNS:
+            for pattern, question_type in self.QUESTION_PATTERNS:
                 match = re.match(pattern, text)
                 if match:
                     try:
-                        question_num = int(match.group(1))
-                        if question_num not in question_mapping:
-                            question_mapping[question_num] = {
+                        if question_type == 'subpart':
+                            # Sub-part question: main_num + sub_letter (e.g., "1a", "1b", "2a")
+                            main_num = int(match.group(1))
+                            sub_letter = match.group(2).lower()
+                            question_id = f"{main_num}{sub_letter}"
+                        else:
+                            # Simple question: just the number
+                            question_id = match.group(1)
+
+                        # Only add if not already detected (first occurrence wins)
+                        if question_id not in question_mapping:
+                            question_mapping[question_id] = {
                                 "page": block["page"],
                                 "x": float(block["x0"]),
                                 "y": float(block["y0"]),
                                 "text": text,
+                                "question_type": question_type,
                             }
-                            detected_questions.append(question_num)
+                            detected_questions.append(question_id)
                     except (ValueError, IndexError):
                         continue
-        
-        self.question_mapping = {str(q): question_mapping[q] for q in sorted(question_mapping.keys())}
+
+        # Sort detected questions properly (numeric and alphanumeric)
+        self.detected_questions = self._sort_questions(detected_questions)
+        self.question_mapping = {str(q): question_mapping[q] for q in self.detected_questions}
         self.detected_questions = sorted(detected_questions)
         
         return self.question_mapping
