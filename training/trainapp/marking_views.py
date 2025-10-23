@@ -333,8 +333,8 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
                     },
                 )
 
-                messages.success(request, f"Exam marked: {len(correct_questions)}/{total_questions} correct")
-                return redirect('trainapp:submission_list', exam_id=exam_id)
+                messages.success(request, f"Exam marked: {len(correct_questions)}/{total_questions} correct. View the marked document below.")
+                return redirect('trainapp:view_marked_submission', submission_id=submission.id)
 
     else:
         form = FastExamMarkingForm()
