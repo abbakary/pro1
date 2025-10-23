@@ -126,7 +126,7 @@ def driver_submissions(request, driver_id: int):
         if user_driver != driver:
             raise Http404("You do not have permission to view this driver's submissions")
 
-    submissions = Submission.objects.filter(driver=driver).select_related('exam').order_by('-created_at')
+    submissions = Submission.objects.filter(driver=driver).select_related('exam').prefetch_related('question_answers').order_by('-created_at')
 
     submissions_with_marks = []
     for sub in submissions:
@@ -137,6 +137,7 @@ def driver_submissions(request, driver_id: int):
             'marked_submission': marked_sub,
             'is_marked': sub.score is not None,
             'can_download': marked_sub and marked_sub.is_generated and marked_sub.marked_pdf_file,
+            'question_count': sub.question_answers.count(),
         })
 
     return render(request, 'exams/driver_submissions.html', {
