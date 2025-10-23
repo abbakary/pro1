@@ -126,12 +126,13 @@
                     <div class="panel-body">
                         <div id="per-question-section" class="questions-grid">
                             {% for question_num in detected_questions %}
+                            {% with is_correct=existing_marks|get_item:question_num %}
                             <div class="question-card" id="question_{{ question_num }}" data-question="{{ question_num }}">
                                 <div class="question-header">
                                     <div class="question-badge">Q{{ question_num }}</div>
                                     <div class="question-controls">
                                         <div class="form-check form-switch">
-                                            <input type="checkbox" class="form-check-input question-check" id="question_{{ question_num }}_correct" name="question_{{ question_num }}_correct" data-question="{{ question_num }}" onchange="updateQuestionUI({{ question_num }})">
+                                            <input type="checkbox" class="form-check-input question-check" id="question_{{ question_num }}_correct" name="question_{{ question_num }}_correct" data-question="{{ question_num }}" onchange="updateQuestionUI({{ question_num }})" {% if is_correct %}checked{% endif %}>
                                             <label class="form-check-label" for="question_{{ question_num }}_correct">
                                                 <span class="mark-correct">✓ Correct</span>
                                             </label>
