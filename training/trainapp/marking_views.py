@@ -249,21 +249,25 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
                 correct_questions = []
                 total_questions = len(detected_questions)
 
-                for question_num in detected_questions:
-                    is_correct = request.POST.get(f'question_{question_num}_correct') == 'on'
+                for question_id in detected_questions:
+                    # Create safe form field names (replace letters with underscores if needed)
+                    safe_question_id = str(question_id).replace('(', '').replace(')', '')
+                    is_correct = request.POST.get(f'question_{safe_question_id}_correct') == 'on'
                     if is_correct:
-                        correct_questions.append(question_num)
+                        correct_questions.append(question_id)
 
+                    # Store as string identifier
+                    question_id_str = str(question_id)
                     QuestionAnswer.objects.update_or_create(
                         submission=submission,
-                        question_number=question_num,
+                        question_number=question_id_str,
                         defaults={
                             'is_correct': is_correct,
-                            'notes': request.POST.get(f'question_{question_num}_notes', ''),
+                            'notes': request.POST.get(f'question_{safe_question_id}_notes', ''),
                         }
                     )
 
-                    marks_by_question[question_num] = is_correct
+                    marks_by_question[question_id_str] = is_correct
 
                 if equal_weight and total_questions > 0:
                     marks_per_question = exam.total_marks / total_questions
