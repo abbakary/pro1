@@ -250,20 +250,21 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
                 total_questions = len(detected_questions)
 
                 for question_id in detected_questions:
-                    # Create safe form field names (replace letters with underscores if needed)
-                    safe_question_id = str(question_id).replace('(', '').replace(')', '')
-                    is_correct = request.POST.get(f'question_{safe_question_id}_correct') == 'on'
-                    if is_correct:
-                        correct_questions.append(question_id)
-
-                    # Store as string identifier
+                    # Question ID may contain letters (e.g., "1a", "1b") or just numbers (e.g., "1", "2")
                     question_id_str = str(question_id)
+
+                    # Check if checkbox for this question was marked
+                    is_correct = request.POST.get(f'question_{question_id_str}_correct') == 'on'
+                    if is_correct:
+                        correct_questions.append(question_id_str)
+
+                    # Store question answer
                     QuestionAnswer.objects.update_or_create(
                         submission=submission,
                         question_number=question_id_str,
                         defaults={
                             'is_correct': is_correct,
-                            'notes': request.POST.get(f'question_{safe_question_id}_notes', ''),
+                            'notes': request.POST.get(f'question_{question_id_str}_notes', ''),
                         }
                     )
 
