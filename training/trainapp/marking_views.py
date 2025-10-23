@@ -126,7 +126,7 @@ def driver_submissions(request, driver_id: int):
         if user_driver != driver:
             raise Http404("You do not have permission to view this driver's submissions")
 
-    submissions = Submission.objects.filter(driver=driver).select_related('exam').order_by('-created_at')
+    submissions = Submission.objects.filter(driver=driver).select_related('exam').prefetch_related('question_answers').order_by('-created_at')
 
     submissions_with_marks = []
     for sub in submissions:
@@ -137,6 +137,7 @@ def driver_submissions(request, driver_id: int):
             'marked_submission': marked_sub,
             'is_marked': sub.score is not None,
             'can_download': marked_sub and marked_sub.is_generated and marked_sub.marked_pdf_file,
+            'question_count': sub.question_answers.count(),
         })
 
     return render(request, 'exams/driver_submissions.html', {
@@ -224,6 +225,42 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
 
                 ExamDistribution.objects.filter(exam=exam, driver=driver).update(status='scored')
 
+                marked_submission, _ = MarkedExamSubmission.objects.get_or_create(submission=submission)
+                marked_submission.total_questions = len(detected_questions) if detected_questions else 1
+                marked_submission.total_correct = int(score)
+                marked_submission.save()
+
+                try:
+                    if exam.file and os.path.exists(exam.file.path) and question_mapping:
+                        marked_pdf_filename = f"marked_{submission.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                        marked_pdf_dir = os.path.join(str(settings.MEDIA_ROOT), 'marked_submissions')
+                        os.makedirs(marked_pdf_dir, exist_ok=True)
+                        marked_pdf_path = os.path.join(marked_pdf_dir, marked_pdf_filename)
+
+                        marks_by_question = {str(i): False for i in detected_questions}
+                        for i in range(int(score)):
+                            if i < len(detected_questions):
+                                marks_by_question[str(detected_questions[i])] = True
+
+                        mark_pdf_submission(
+                            source_pdf=exam.file.path,
+                            output_pdf=marked_pdf_path,
+                            driver_name=f"{driver.first_name} {driver.last_name}",
+                            exam_title=exam.title,
+                            marks=marks_by_question,
+                            question_mapping=question_mapping,
+                            exam_date=submission.created_at.strftime('%d-%m-%Y')
+                        )
+
+                        marked_submission.marked_pdf_file = f"marked_submissions/{marked_pdf_filename}"
+                        marked_submission.is_generated = True
+                        marked_submission.generation_error = ''
+                        marked_submission.save()
+                except Exception as e:
+                    marked_submission.is_generated = False
+                    marked_submission.generation_error = str(e)
+                    marked_submission.save()
+
                 AuditHistory.objects.create(
                     action='fast_mark_exam_total',
                     entity_type='Submission',
@@ -238,8 +275,8 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
                     },
                 )
 
-                messages.success(request, f"Exam marked with score {score}/{exam.total_marks}")
-                return redirect('trainapp:submission_list', exam_id=exam_id)
+                messages.success(request, f"Exam marked with score {score}/{exam.total_marks}. View the marked document below.")
+                return redirect('trainapp:view_marked_submission', submission_id=submission.id)
 
             elif marking_mode == 'per_question':
                 if not detected_questions:
@@ -332,8 +369,8 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
                     },
                 )
 
-                messages.success(request, f"Exam marked: {len(correct_questions)}/{total_questions} correct")
-                return redirect('trainapp:submission_list', exam_id=exam_id)
+                messages.success(request, f"Exam marked: {len(correct_questions)}/{total_questions} correct. View the marked document below.")
+                return redirect('trainapp:view_marked_submission', submission_id=submission.id)
 
     else:
         form = FastExamMarkingForm()

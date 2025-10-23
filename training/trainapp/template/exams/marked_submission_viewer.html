@@ -21,6 +21,11 @@
     <div class="container mt-4">
         <div class="alert alert-warning" role="alert">
             <i class="fas fa-exclamation-circle"></i> {{ error }}
+            {% if marked_submission and marked_submission.generation_error %}
+            <div class="mt-2 small text-muted">
+                <strong>Generation Error:</strong> {{ marked_submission.generation_error }}
+            </div>
+            {% endif %}
         </div>
         <a href="{% url 'trainapp:driver_submissions' submission.driver.id %}" class="btn btn-outline-secondary">
             Back to My Exams
@@ -52,7 +57,7 @@
                 </div>
                 <div class="toolbar-group">
                     {% if marked_submission.marked_pdf_file %}
-                    <a href="{{ marked_submission.marked_pdf_file.url }}" download="marked_{{ submission.driver.first_name }}_{{ submission.exam.title }}.pdf" class="toolbar-btn" title="Download PDF">
+                    <a href="{% url 'trainapp:download_marked_pdf' submission.id %}" class="toolbar-btn" title="Download Marked PDF" target="_blank">
                         <i class="fas fa-download"></i> Download
                     </a>
                     {% endif %}
@@ -141,13 +146,17 @@ const pdfUrl = '{{ marked_submission.marked_pdf_file.url }}';
 
 async function initializePDF() {
     try {
+        if (!pdfUrl || pdfUrl.trim() === '') {
+            throw new Error('No PDF URL available');
+        }
+
         pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
         document.getElementById('pdf-total-pages').textContent = pdfDoc.numPages;
         renderPage(1);
     } catch (error) {
         console.error('Error loading PDF:', error);
-        document.querySelector('.pdf-canvas-wrapper').innerHTML = 
-            '<div class="alert alert-danger">Error loading PDF. Please try again.</div>';
+        document.querySelector('.pdf-canvas-wrapper').innerHTML =
+            '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> <strong>Error loading marked PDF:</strong> ' + error.message + '</div>';
     }
 }
 
@@ -201,9 +210,15 @@ document.getElementById('pdf-zoom-in-btn').addEventListener('click', () => {
     renderPage(currentPage);
 });
 
-if (pdfUrl && pdfUrl.includes('/media/')) {
-    initializePDF();
-}
+// Initialize PDF when page loads
+document.addEventListener('DOMContentLoaded', () => {
+    if (pdfUrl && pdfUrl.trim() !== '') {
+        initializePDF();
+    } else {
+        document.querySelector('.pdf-canvas-wrapper').innerHTML =
+            '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> <strong>Error:</strong> No marked PDF available.</div>';
+    }
+});
 </script>
 
 <style>
