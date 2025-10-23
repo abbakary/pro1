@@ -341,7 +341,7 @@ def mark_pdf_submission(
     output_pdf: str,
     driver_name: str,
     exam_title: str,
-    marks: Dict[int, bool],
+    marks: Dict[str, bool],
     question_mapping: Dict[str, Any],
     exam_date: str = ""
 ) -> bool:
@@ -353,7 +353,8 @@ def mark_pdf_submission(
         output_pdf: Path where the marked PDF will be saved
         driver_name: Name of the driver
         exam_title: Title of the exam
-        marks: Dictionary mapping question number to True (correct) or False (incorrect)
+        marks: Dictionary mapping question identifier (string) to True (correct) or False (incorrect)
+               Question identifiers can be: "1", "2", "1a", "1b", "2a", etc.
         question_mapping: Question position mapping from template
         exam_date: Date of the exam
 
