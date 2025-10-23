@@ -125,14 +125,15 @@
 
                     <div class="panel-body">
                         <div id="per-question-section" class="questions-grid">
-                            {% for question_num in detected_questions %}
-                            <div class="question-card" id="question_{{ question_num }}" data-question="{{ question_num }}">
+                            {% for question_id in detected_questions %}
+                            {% with safe_id=question_id|stringformat:'s'|add:'_safe' %}
+                            <div class="question-card" id="question_{{ question_id }}" data-question="{{ question_id }}">
                                 <div class="question-header">
-                                    <div class="question-badge">Q{{ question_num }}</div>
+                                    <div class="question-badge">{{ question_id }}</div>
                                     <div class="question-controls">
                                         <div class="form-check form-switch">
-                                            <input type="checkbox" class="form-check-input question-check" id="question_{{ question_num }}_correct" name="question_{{ question_num }}_correct" data-question="{{ question_num }}" onchange="updateQuestionUI({{ question_num }})">
-                                            <label class="form-check-label" for="question_{{ question_num }}_correct">
+                                            <input type="checkbox" class="form-check-input question-check" id="question_{{ question_id }}_correct" name="question_{{ question_id }}_correct" data-question="{{ question_id }}" onchange="updateQuestionUI('{{ question_id }}')">
+                                            <label class="form-check-label" for="question_{{ question_id }}_correct">
                                                 <span class="mark-correct">✓ Correct</span>
                                             </label>
                                         </div>
@@ -140,13 +141,14 @@
                                 </div>
 
                                 <div class="question-notes">
-                                    <textarea class="form-control" name="question_{{ question_num }}_notes" id="question_{{ question_num }}_notes" placeholder="Add notes..." rows="2"></textarea>
+                                    <textarea class="form-control" name="question_{{ question_id }}_notes" id="question_{{ question_id }}_notes" placeholder="Add notes..." rows="2"></textarea>
                                 </div>
 
-                                <div class="question-status" id="status_{{ question_num }}">
+                                <div class="question-status" id="status_{{ question_id }}">
                                     <span class="status-badge status-pending">Pending</span>
                                 </div>
                             </div>
+                            {% endwith %}
                             {% endfor %}
                         </div>
 
