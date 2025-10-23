@@ -196,19 +196,20 @@ class PDFMarker:
         """Set the question position mapping."""
         self.question_mapping = question_mapping
     
-    def overlay_marks(self, marks: Dict[int, bool]) -> bool:
+    def overlay_marks(self, marks: Dict[str, bool]) -> bool:
         """
         Overlay checkmarks or cross marks on the PDF.
 
         Args:
-            marks: Dictionary mapping question number to True (correct) or False (incorrect)
+            marks: Dictionary mapping question identifier (string) to True (correct) or False (incorrect)
+                  Question identifiers can be: "1", "2", "1a", "1b", "2a", etc.
         """
         if not self.doc:
             self.open_pdf()
 
         try:
-            for question_num, is_correct in marks.items():
-                question_str = str(question_num)
+            for question_id, is_correct in marks.items():
+                question_str = str(question_id)
                 if question_str not in self.question_mapping:
                     continue
 
