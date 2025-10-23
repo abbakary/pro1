@@ -9,7 +9,7 @@
                 <p class="text-muted mb-0">{{ exam.title }} | {{ driver.first_name }} {{ driver.last_name }}</p>
             </div>
             <div class="col-auto">
-                <a href="{% url 'trainingapp:submission_list' exam.id %}" class="btn btn-outline-secondary">Back to Submissions</a>
+                <a href="{% url 'trainapp:submission_list' exam.id %}" class="btn btn-outline-secondary">Back to Submissions</a>
             </div>
         </div>
     </div>
@@ -251,7 +251,7 @@
                                     <button type="submit" class="btn btn-primary btn-lg flex-grow-1">
                                         <i class="fas fa-save"></i> Save & Generate Marked PDF
                                     </button>
-                                    <a href="{% url 'trainingapp:submission_list' exam.id %}" class="btn btn-outline-secondary btn-lg">
+                                    <a href="{% url 'trainapp:submission_list' exam.id %}" class="btn btn-outline-secondary btn-lg">
                                         Cancel
                                     </a>
                                 </div>

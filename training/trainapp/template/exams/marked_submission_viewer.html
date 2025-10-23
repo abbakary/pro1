@@ -10,7 +10,7 @@
                 <p class="submission-meta">Marked on {{ submission.graded_at|date:"d M, Y H:i" }}</p>
             </div>
             <div class="header-actions">
-                <a href="{% url 'trainingapp:driver_submissions' submission.driver.id %}" class="btn btn-outline-secondary">
+                <a href="{% url 'trainapp:driver_submissions' submission.driver.id %}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left"></i> Back to My Exams
                 </a>
             </div>
@@ -22,7 +22,7 @@
         <div class="alert alert-warning" role="alert">
             <i class="fas fa-exclamation-circle"></i> {{ error }}
         </div>
-        <a href="{% url 'trainingapp:driver_submissions' submission.driver.id %}" class="btn btn-outline-secondary">
+        <a href="{% url 'trainapp:driver_submissions' submission.driver.id %}" class="btn btn-outline-secondary">
             Back to My Exams
         </a>
     </div>

@@ -5,7 +5,7 @@
   <div class="page-title">
     <div class="row">
       <div class="col-6"><h4>Notifications</h4></div>
-      <div class="col-6 text-end"><a class="btn btn-primary" href="{% url 'trainingapp:notification_create' %}">Send Notification</a></div>
+      <div class="col-6 text-end"><a class="btn btn-primary" href="{% url 'trainapp:notification_create' %}">Send Notification</a></div>
     </div>
   </div>
   <div class="card">
@@ -28,7 +28,7 @@
                 <td>{{ n.target_display }}</td>
                 <td>{% if n.attachment %}<a href="{{ n.attachment.url }}" target="_blank">Open</a>{% else %}-{% endif %}</td>
                 <td>{{ n.created_at }}</td>
-                <td><a class="btn btn-sm btn-outline-secondary" href="{% url 'trainingapp:notification_detail' n.id %}">View</a></td>
+                <td><a class="btn btn-sm btn-outline-secondary" href="{% url 'trainapp:notification_detail' n.id %}">View</a></td>
               </tr>
             {% empty %}
               <tr><td colspan="5" class="text-center">No notifications yet.</td></tr>

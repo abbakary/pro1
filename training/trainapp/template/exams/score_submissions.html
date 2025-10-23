@@ -219,7 +219,7 @@
         <h4>Score Submissions & Recording</h4>
       </div>
       <div class="col-6 text-end">
-        <a class="btn btn-outline-secondary" href="{% url 'trainingapp:exam_list' %}">Back to Exams</a>
+        <a class="btn btn-outline-secondary" href="{% url 'trainapp:exam_list' %}">Back to Exams</a>
       </div>
     </div>
   </div>
@@ -435,7 +435,7 @@ function saveScoreToDB(driverId, score, cell) {
   const indicator = cell.querySelector('.saving-indicator');
   indicator.classList.add('saving');
 
-  fetch('{% url "trainingapp:api_save_score" %}', {
+  fetch('{% url "trainapp:api_save_score" %}', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -475,7 +475,7 @@ function saveNotesToDB(driverId, notes, cell) {
   const indicator = cell.querySelector('.saving-indicator') || document.createElement('span');
   const row = document.querySelector(`tr[data-driver-id="${driverId}"]`);
 
-  fetch('{% url "trainingapp:api_save_score" %}', {
+  fetch('{% url "trainapp:api_save_score" %}', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -510,7 +510,7 @@ function downloadPDF(type) {
     return;
   }
 
-  let url = `{% url 'trainingapp:exam_results_print' 0 %}`.replace('0', examId);
+  let url = `{% url 'trainapp:exam_results_print' 0 %}`.replace('0', examId);
   
   if (type === 'filtered') {
     const form = document.getElementById('filterForm');

@@ -68,7 +68,7 @@
                     </td>
                     <td>
                       {% if row.status == 'scored' and row.marked_submission %}
-                      <a href="{% url 'trainingapp:view_marked_submission' row.submission_id %}" class="btn btn-sm btn-outline-primary">
+                      <a href="{% url 'trainapp:view_marked_submission' row.submission_id %}" class="btn btn-sm btn-outline-primary">
                         <i class="fa fa-eye"></i> View
                       </a>
                       {% else %}
@@ -115,7 +115,7 @@
                 {% empty %}
                 {% endfor %}
               </div>
-              <form class="mt-2" method="post" action="{% url 'trainingapp:notification_respond' r.id %}">
+              <form class="mt-2" method="post" action="{% url 'trainapp:notification_respond' r.id %}">
                 {% csrf_token %}
                 {{ response_form.message.as_widget }}
                 <div class="mt-2">

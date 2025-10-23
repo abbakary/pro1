@@ -4,7 +4,7 @@ from .marking_views import (
     mark_exam_paper, download_marked_pdf, driver_submissions, view_marked_submission
 )
 
-app_name = 'trainingapp'
+app_name = 'trainapp'
 
 urlpatterns = [
     path('', views.dashboard, name='dashboard'),

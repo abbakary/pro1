@@ -498,7 +498,7 @@
       <div class="card">
         <div class="card-header">
           <h5>Recent Submissions</h5>
-          <a href="{% url 'trainingapp:exam_list' %}" class="card-header-link">View All</a>
+          <a href="{% url 'trainapp:exam_list' %}" class="card-header-link">View All</a>
         </div>
         <div class="card-body p-0">
           {% if recent_submissions %}
@@ -565,19 +565,19 @@
           </div>
           <div class="card-body">
             <div class="quick-actions">
-              <a href="{% url 'trainingapp:driver_create' %}" class="action-btn">
+              <a href="{% url 'trainapp:driver_create' %}" class="action-btn">
                 <i class="fa fa-user-plus"></i>
                 <span>Add Driver</span>
               </a>
-              <a href="{% url 'trainingapp:batch_create' %}" class="action-btn">
+              <a href="{% url 'trainapp:batch_create' %}" class="action-btn">
                 <i class="fa fa-layer-group"></i>
                 <span>Create Batch</span>
               </a>
-              <a href="{% url 'trainingapp:exam_upload' %}" class="action-btn">
+              <a href="{% url 'trainapp:exam_upload' %}" class="action-btn">
                 <i class="fa fa-upload"></i>
                 <span>Upload Exam</span>
               </a>
-              <a href="{% url 'trainingapp:score_submissions' %}" class="action-btn">
+              <a href="{% url 'trainapp:score_submissions' %}" class="action-btn">
                 <i class="fa fa-pencil"></i>
                 <span>Score Exams</span>
               </a>
@@ -589,7 +589,7 @@
         <div class="card">
           <div class="card-header">
             <h5>Recent Exams</h5>
-            <a href="{% url 'trainingapp:exam_list' %}" class="card-header-link">View All</a>
+            <a href="{% url 'trainapp:exam_list' %}" class="card-header-link">View All</a>
           </div>
           <div class="card-body p-0">
             {% if recent_exams %}
@@ -607,7 +607,7 @@
                     {% for exam in recent_exams %}
                       <tr>
                         <td>
-                          <a href="{% url 'trainingapp:exam_view' exam.id %}" style="color: #667eea; text-decoration: none; font-weight: 500;">
+                          <a href="{% url 'trainapp:exam_view' exam.id %}" style="color: #667eea; text-decoration: none; font-weight: 500;">
                             {{ exam.title|truncatewords:4 }}
                           </a>
                         </td>
@@ -642,7 +642,7 @@
       <div class="card">
         <div class="card-header">
           <h5>Pending Score Reviews</h5>
-          <a href="{% url 'trainingapp:score_submissions' %}" class="card-header-link">Score Now</a>
+          <a href="{% url 'trainapp:score_submissions' %}" class="card-header-link">Score Now</a>
         </div>
         <div class="card-body p-0">
           {% if pending_submissions %}
@@ -674,7 +674,7 @@
                         <span class="text-muted-sm">{{ sub.created_at|date:"M d, H:i" }}</span>
                       </td>
                       <td>
-                        <a href="{% url 'trainingapp:score_submission' sub.exam.id sub.driver.id %}" class="btn btn-sm btn-outline-primary" style="font-size: 0.75rem;">Score</a>
+                        <a href="{% url 'trainapp:score_submission' sub.exam.id sub.driver.id %}" class="btn btn-sm btn-outline-primary" style="font-size: 0.75rem;">Score</a>
                       </td>
                     </tr>
                   {% endfor %}
@@ -694,7 +694,7 @@
       <div class="card">
         <div class="card-header">
           <h5>Top Performing Drivers</h5>
-          <a href="{% url 'trainingapp:driver_list' %}" class="card-header-link">View All</a>
+          <a href="{% url 'trainapp:driver_list' %}" class="card-header-link">View All</a>
         </div>
         <div class="card-body p-0">
           {% if top_performing_drivers %}

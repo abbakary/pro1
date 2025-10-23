@@ -1,6 +1,6 @@
 {% load static %}
 {% load tz %}
-{% load date_filters %}
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -111,7 +111,7 @@
                 <!-- Logo -->
                 <div class="header-logo-wrapper col-auto p-0">
                     <div class="logo-wrapper">
-                        <a href="{% url 'trainingapp:dashboard' %}">
+                        <a href="{% url 'trainapp:dashboard' %}">
                             <img class="img-fluid for-light" src="{% static 'assets/images/logo/logo_dark.png' %}" alt="logo-light">
                             <img class="img-fluid for-dark" src="{% static 'assets/images/logo/logo.png' %}" alt="logo-dark">
                         </a>
@@ -231,7 +231,7 @@
             <div class="sidebar-wrapper" data-layout="stroke-svg">
                 <div>
                     <div class="logo-wrapper">
-                        <a href="{% url 'trainingapp:dashboard' %}">
+                        <a href="{% url 'trainapp:dashboard' %}">
                             <img class="img-fluid" src="{% static 'assets/images/logo/stm_logo.png' %}" alt="">
                         </a>
                         <div class="back-btn">
@@ -242,7 +242,7 @@
                         </div>
                     </div>
                     <div class="logo-icon-wrapper">
-                        <a href="{% url 'trainingapp:dashboard' %}">
+                        <a href="{% url 'trainapp:dashboard' %}">
                           <img class="img-fluid" src="{% static 'assets/images/logo/wecare.png' %}" alt="WeCare Logo" style="width: 50px; height: auto;">
 
                         </a>
@@ -254,7 +254,7 @@
                         <div id="sidebar-menu">
                             <ul class="sidebar-links" id="simple-bar">
                                 <li class="back-btn">
-                                    <a href="{% url 'trainingapp:dashboard' %}">
+                                    <a href="{% url 'trainapp:dashboard' %}">
                                         <img class="img-fluid" src="{% static 'assets/images/logo/logo-icon.png' %}" alt="">
                                     </a>
                                     <div class="mobile-back text-end">
@@ -269,7 +269,7 @@
                                 </li>
                                 <li class="sidebar-list">
                                     <i class="fa fa-thumb-tack"></i>
-                                    <a class="sidebar-link sidebar-title" href="{% url 'trainingapp:dashboard' %}">
+                                    <a class="sidebar-link sidebar-title" href="{% url 'trainapp:dashboard' %}">
                                         <svg class="stroke-icon">
                                             <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-home"></use>
                                         </svg>
@@ -278,7 +278,7 @@
                                 </li>
                                 <li class="sidebar-list">
                                     <i class="fa fa-thumb-tack"></i>
-                                    <a class="sidebar-link sidebar-title" href="{% url 'trainingapp:driver_portal' %}">
+                                    <a class="sidebar-link sidebar-title" href="{% url 'trainapp:driver_portal' %}">
                                         <svg class="stroke-icon">
                                             <use href="{% static 'assets/svg/icon-sprite.svg' %}#stroke-user"></use>
                                         </svg>
@@ -295,8 +295,8 @@
                                         <span>Drivers</span>
                                     </a>
                                     <ul class="sidebar-submenu">
-                                        <li><a href="{% url 'trainingapp:driver_list' %}">All Drivers</a></li>
-                                        <li><a href="{% url 'trainingapp:driver_create' %}">Add Driver</a></li>
+                                        <li><a href="{% url 'trainapp:driver_list' %}">All Drivers</a></li>
+                                        <li><a href="{% url 'trainapp:driver_create' %}">Add Driver</a></li>
                                     </ul>
                                 </li>
                                 <li class="sidebar-list">
@@ -308,8 +308,8 @@
                                         <span>Batches</span>
                                     </a>
                                     <ul class="sidebar-submenu">
-                                        <li><a href="{% url 'trainingapp:batch_list' %}">All Batches</a></li>
-                                        <li><a href="{% url 'trainingapp:batch_create' %}">Add Batch</a></li>
+                                        <li><a href="{% url 'trainapp:batch_list' %}">All Batches</a></li>
+                                        <li><a href="{% url 'trainapp:batch_create' %}">Add Batch</a></li>
                                     </ul>
                                 </li>
                                 <li class="sidebar-list">
@@ -321,8 +321,8 @@
                                         <span>Timetable</span>
                                     </a>
                                     <ul class="sidebar-submenu">
-                                        <li><a href="{% url 'trainingapp:timetable_list' %}">All Entries</a></li>
-                                        <li><a href="{% url 'trainingapp:timetable_create' %}">Add Entry</a></li>
+                                        <li><a href="{% url 'trainapp:timetable_list' %}">All Entries</a></li>
+                                        <li><a href="{% url 'trainapp:timetable_create' %}">Add Entry</a></li>
                                     </ul>
                                 </li>
                                 <li class="sidebar-list">
@@ -334,8 +334,8 @@
                                         <span>Notifications</span>
                                     </a>
                                     <ul class="sidebar-submenu">
-                                        <li><a href="{% url 'trainingapp:notification_list' %}">All Notifications</a></li>
-                                        <li><a href="{% url 'trainingapp:notification_create' %}">Send Notification</a></li>
+                                        <li><a href="{% url 'trainapp:notification_list' %}">All Notifications</a></li>
+                                        <li><a href="{% url 'trainapp:notification_create' %}">Send Notification</a></li>
                                     </ul>
                                 </li>
                                 <li class="sidebar-list">
@@ -347,9 +347,9 @@
                                         <span>Exams</span>
                                     </a>
                                     <ul class="sidebar-submenu">
-                                        <li><a href="{% url 'trainingapp:exam_list' %}">All Exams</a></li>
-                                        <li><a href="{% url 'trainingapp:exam_upload' %}">Upload Exam</a></li>
-                                        <li><a href="{% url 'trainingapp:score_submissions' %}">Score Submissions</a></li>
+                                        <li><a href="{% url 'trainapp:exam_list' %}">All Exams</a></li>
+                                        <li><a href="{% url 'trainapp:exam_upload' %}">Upload Exam</a></li>
+                                        <li><a href="{% url 'trainapp:score_submissions' %}">Score Submissions</a></li>
                                     </ul>
                                 </li>
                                 <li class="sidebar-list">
@@ -361,7 +361,7 @@
                                         <span>Reports</span>
                                     </a>
                                     <ul class="sidebar-submenu">
-                                        <li><a href="{% url 'trainingapp:exam_list' %}">Results</a></li>
+                                        <li><a href="{% url 'trainapp:exam_list' %}">Results</a></li>
                                     </ul>
                                 </li>
                                 {% endif %}

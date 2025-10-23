@@ -19,7 +19,7 @@ from .pdf_utils import generate_driver_detail_pdf
 @login_required
 def dashboard(request):
     if not request.user.is_staff and hasattr(request.user, 'driver_profile') and request.user.driver_profile:
-        return redirect('trainingapp:driver_portal')
+        return redirect('trainapp:driver_portal')
 
     now = timezone.now()
     first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -145,7 +145,7 @@ def driver_create(request):
                 details={"first_name": driver.first_name},
             )
             messages.success(request, "Driver created successfully")
-            return redirect("trainingapp:driver_list")
+            return redirect("trainapp:driver_list")
     else:
         form = DriverForm()
     return render(request, "drivers/driver_form.html", {"form": form, "title": "Add Driver"})
@@ -239,7 +239,7 @@ def download_driver_pdf(request, pk: int):
 
     except Exception as e:
         messages.error(request, f"Error generating PDF: {str(e)}")
-        return redirect('trainingapp:driver_detail', pk=pk)
+        return redirect('trainapp:driver_detail', pk=pk)
 
 
 @staff_member_required
@@ -257,7 +257,7 @@ def driver_edit(request, pk: int):
                 details={"first_name": driver.first_name},
             )
             messages.success(request, "Driver updated successfully")
-            return redirect("trainingapp:driver_detail", pk=driver.id)
+            return redirect("trainapp:driver_detail", pk=driver.id)
     else:
         form = DriverForm(instance=driver)
     return render(request, "drivers/driver_form.html", {"form": form, "title": "Edit Driver"})
@@ -296,7 +296,7 @@ def timetable_create(request):
                 details={"title": t.title},
             )
             messages.success(request, "Timetable entry created")
-            return redirect('trainingapp:timetable_list')
+            return redirect('trainapp:timetable_list')
     else:
         form = TimetableEntryForm()
     return render(request, 'timetable/timetable_form.html', {"form": form, "title": "Add Timetable Entry"})
@@ -332,7 +332,7 @@ def notification_create(request):
                 details={"title": notif.title, "recipients": created},
             )
             messages.success(request, f"Notification sent to {created} driver(s)")
-            return redirect('trainingapp:notification_list')
+            return redirect('trainapp:notification_list')
     else:
         form = NotificationForm()
     return render(request, 'notifications/notification_form.html', {"form": form, "title": "Send Notification"})
@@ -362,8 +362,8 @@ def notification_respond(request, receipt_id: int):
             resp.receipt = receipt
             resp.save()
             messages.success(request, "Response sent")
-            return redirect('trainingapp:driver_portal')
-    return redirect('trainingapp:driver_portal')
+            return redirect('trainapp:driver_portal')
+    return redirect('trainapp:driver_portal')
 
 
 @staff_member_required
@@ -380,7 +380,7 @@ def batch_create(request):
                 details={"name": batch.name},
             )
             messages.success(request, "Batch created successfully")
-            return redirect("trainingapp:batch_list")
+            return redirect("trainapp:batch_list")
     else:
         form = BatchForm()
     return render(request, "batches/batch_form.html", {"form": form, "title": "Add Batch"})
@@ -410,7 +410,7 @@ def exam_upload(request):
                 details={"title": exam.title},
             )
             messages.success(request, "Exam paper uploaded")
-            return redirect("trainingapp:exam_list")
+            return redirect("trainapp:exam_list")
     else:
         form = ExamUploadForm()
     return render(request, "exams/exam_upload.html", {"form": form})
@@ -438,7 +438,7 @@ def exam_distribute(request, pk: int):
         user=request.user,
         details={"batch": exam.batch.name, "created": created},
     )
-    return redirect("trainingapp:submission_list", exam_id=exam.id)
+    return redirect("trainapp:submission_list", exam_id=exam.id)
 
 
 
@@ -544,7 +544,7 @@ def score_submission(request, exam_id: int, driver_id: int):
     driver = get_object_or_404(Driver, pk=driver_id)
     if not ExamDistribution.objects.filter(exam=exam, driver=driver).exists():
         messages.error(request, "Driver is not assigned this exam")
-        return redirect("trainingapp:submission_list", exam_id=exam.id)
+        return redirect("trainapp:submission_list", exam_id=exam.id)
 
     submission, _ = Submission.objects.get_or_create(exam=exam, driver=driver)
 
@@ -565,7 +565,7 @@ def score_submission(request, exam_id: int, driver_id: int):
                 details={"score": float(submission.score) if submission.score is not None else None},
             )
             messages.success(request, "Submission saved")
-            return redirect("trainingapp:submission_list", exam_id=exam.id)
+            return redirect("trainapp:submission_list", exam_id=exam.id)
     else:
         form = ScoreForm(instance=submission)
     return render(

@@ -338,9 +338,9 @@
 {% block content %}
 <div class="container-fluid">
   <div class="breadcrumb-nav">
-    <a href="{% url 'trainingapp:dashboard' %}"><i class="fas fa-home"></i> Dashboard</a>
+    <a href="{% url 'trainapp:dashboard' %}"><i class="fas fa-home"></i> Dashboard</a>
     <span class="separator">/</span>
-    <a href="{% url 'trainingapp:driver_list' %}"><i class="fas fa-users"></i> Drivers</a>
+    <a href="{% url 'trainapp:driver_list' %}"><i class="fas fa-users"></i> Drivers</a>
     <span class="separator">/</span>
     <span><i class="fas fa-user"></i> {{ driver.first_name }} {{ driver.last_name }}</span>
   </div>
@@ -371,13 +371,13 @@
     </div>
 
     <div class="driver-header-actions">
-      <a href="{% url 'trainingapp:download_driver_pdf' driver.id %}" class="action-button action-button-success">
+      <a href="{% url 'trainapp:download_driver_pdf' driver.id %}" class="action-button action-button-success">
         <i class="fas fa-download"></i> Download PDF
       </a>
-      <a href="{% url 'trainingapp:driver_edit' driver.id %}" class="action-button action-button-primary">
+      <a href="{% url 'trainapp:driver_edit' driver.id %}" class="action-button action-button-primary">
         <i class="fas fa-edit"></i> Edit Profile
       </a>
-      <a href="{% url 'trainingapp:driver_list' %}" class="action-button action-button-secondary">
+      <a href="{% url 'trainapp:driver_list' %}" class="action-button action-button-secondary">
         <i class="fas fa-arrow-left"></i> Back to List
       </a>
     </div>
@@ -499,7 +499,7 @@
                 </td>
                 <td>
                   <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <a href="{% url 'trainingapp:mark_submission' item.exam.id driver.id %}" class="action-button" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                    <a href="{% url 'trainapp:mark_submission' item.exam.id driver.id %}" class="action-button" style="font-size: 0.85rem; padding: 0.5rem 0.75rem;">
                       <i class="fas fa-pencil"></i> Mark
                     </a>
                     {% if item.marked_submission and item.marked_submission.marked_pdf_file %}

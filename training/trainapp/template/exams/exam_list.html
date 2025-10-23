@@ -5,7 +5,7 @@
   <div class="page-title">
     <div class="row">
       <div class="col-6"><h4>Exams</h4></div>
-      <div class="col-6 text-end"><a class="btn btn-primary" href="{% url 'trainingapp:exam_upload' %}">Upload Exam</a></div>
+      <div class="col-6 text-end"><a class="btn btn-primary" href="{% url 'trainapp:exam_upload' %}">Upload Exam</a></div>
     </div>
   </div>
   <div class="card">
@@ -30,10 +30,10 @@
               </td>
               <td>{{ e.created_at }}</td>
               <td class="d-flex gap-1">
-                <a class="btn btn-sm btn-outline-info" href="{% url 'trainingapp:exam_view' e.id %}" target="_blank">View</a>
+                <a class="btn btn-sm btn-outline-info" href="{% url 'trainapp:exam_view' e.id %}" target="_blank">View</a>
                 {% if e.batch %}
-                  <a class="btn btn-sm btn-outline-primary" href="{% url 'trainingapp:exam_distribute' e.id %}">Distribute</a>
-                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'trainingapp:submission_list' e.id %}">Submissions</a>
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'trainapp:exam_distribute' e.id %}">Distribute</a>
+                  <a class="btn btn-sm btn-outline-secondary" href="{% url 'trainapp:submission_list' e.id %}">Submissions</a>
                 {% else %}
                   <span class="badge bg-warning">No batch</span>
                 {% endif %}

@@ -10,7 +10,7 @@
                 <p class="driver-info">{{ driver.first_name }} {{ driver.last_name }} | License: {{ driver.license_no|default:"N/A" }}</p>
             </div>
             <div class="header-actions">
-                <a href="{% url 'trainingapp:submission_list' exam.id %}" class="btn btn-outline-secondary">
+                <a href="{% url 'trainapp:submission_list' exam.id %}" class="btn btn-outline-secondary">
                     <i class="fas fa-arrow-left"></i> Back to Submissions
                 </a>
             </div>
@@ -158,7 +158,7 @@
                     <button type="submit" class="btn btn-primary btn-block btn-lg">
                         <i class="fas fa-save"></i> Save Score & Mark Complete
                     </button>
-                    <a href="{% url 'trainingapp:submission_list' exam.id %}" class="btn btn-outline-secondary btn-block">
+                    <a href="{% url 'trainapp:submission_list' exam.id %}" class="btn btn-outline-secondary btn-block">
                         <i class="fas fa-times"></i> Cancel
                     </a>
                 </div>

@@ -33,9 +33,7 @@ def mark_exam_paper(request, exam_id: int, driver_id: int):
     if not ExamDistribution.objects.filter(exam=exam, driver=driver).exists():
         raise Http404("Driver not assigned to this exam")
 
-    submission = Submission.objects.filter(exam=exam, driver=driver).first()
-    if not submission:
-        raise Http404("No submission found for this driver-exam pair")
+    submission, created = Submission.objects.get_or_create(exam=exam, driver=driver)
 
     if request.method == 'POST':
         score_str = request.POST.get('score', '').strip()
@@ -46,11 +44,11 @@ def mark_exam_paper(request, exam_id: int, driver_id: int):
 
             if score is not None and score < 0:
                 messages.error(request, "Score cannot be negative")
-                return redirect('trainingapp:mark_exam_paper', exam_id=exam_id, driver_id=driver_id)
+                return redirect('trainapp:mark_exam_paper', exam_id=exam_id, driver_id=driver_id)
 
             if score is not None and score > exam.total_marks:
                 messages.error(request, f"Score cannot exceed {exam.total_marks}")
-                return redirect('trainingapp:mark_exam_paper', exam_id=exam_id, driver_id=driver_id)
+                return redirect('trainapp:mark_exam_paper', exam_id=exam_id, driver_id=driver_id)
 
             submission.score = score
             submission.notes = notes
@@ -74,11 +72,11 @@ def mark_exam_paper(request, exam_id: int, driver_id: int):
             )
 
             messages.success(request, f"Exam marked with score {score}/{exam.total_marks}")
-            return redirect('trainingapp:submission_list', exam_id=exam_id)
+            return redirect('trainapp:submission_list', exam_id=exam_id)
 
         except ValueError:
             messages.error(request, "Invalid score format")
-            return redirect('trainingapp:mark_exam_paper', exam_id=exam_id, driver_id=driver_id)
+            return redirect('trainapp:mark_exam_paper', exam_id=exam_id, driver_id=driver_id)
 
     marked_submission = MarkedExamSubmission.objects.filter(submission=submission).first()
 
