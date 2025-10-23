@@ -58,6 +58,9 @@
               <td class="text-capitalize">{{ row.status }}</td>
               <td>{% if row.score is not None %}{{ row.score }}{% else %}-{% endif %}</td>
               <td class="d-flex gap-1">
+                <a class="btn btn-sm btn-primary" href="{% url 'trainapp:fast_mark_exam' exam.id row.driver.id %}" title="Fast marking with question detection">
+                  <i class="fas fa-bolt"></i> Fast Mark
+                </a>
                 <a class="btn btn-sm btn-outline-primary" href="{% url 'trainapp:mark_submission' exam.id row.driver.id %}" title="Review and mark exam with PDF viewer">
                   <i class="fas fa-pen-fancy"></i> Mark
                 </a>
