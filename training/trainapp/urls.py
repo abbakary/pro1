@@ -40,6 +40,7 @@ urlpatterns = [
 
     # Exam Marking
     path('exams/<int:exam_id>/mark/<int:driver_id>/', mark_exam_paper, name='mark_submission'),
+    path('exams/<int:exam_id>/fast-mark/<int:driver_id>/', fast_mark_exam, name='fast_mark_exam'),
     path('submissions/<int:submission_id>/view-marked/', view_marked_submission, name='view_marked_submission'),
     path('submissions/<int:submission_id>/download-marked-pdf/', download_marked_pdf, name='download_marked_pdf'),
 
