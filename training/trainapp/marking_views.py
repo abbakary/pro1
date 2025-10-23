@@ -286,12 +286,10 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
 
                 try:
                     if exam.file and os.path.exists(exam.file.path) and question_mapping:
+                        marked_pdf_filename = f"marked_{submission.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
                         marked_pdf_dir = os.path.join(str(settings.MEDIA_ROOT), 'marked_submissions')
                         os.makedirs(marked_pdf_dir, exist_ok=True)
-                        marked_pdf_path = os.path.join(
-                            marked_pdf_dir,
-                            f"marked_{submission.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                        )
+                        marked_pdf_path = os.path.join(marked_pdf_dir, marked_pdf_filename)
 
                         mark_pdf_submission(
                             source_pdf=exam.file.path,
@@ -303,8 +301,7 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
                             exam_date=submission.created_at.strftime('%d-%m-%Y')
                         )
 
-                        relative_path = marked_pdf_path.replace(str(settings.MEDIA_ROOT) + '/', '')
-                        marked_submission.marked_pdf_file = relative_path
+                        marked_submission.marked_pdf_file = f"marked_submissions/{marked_pdf_filename}"
                         marked_submission.is_generated = True
                         marked_submission.generation_error = ''
                         marked_submission.save()
