@@ -2,7 +2,6 @@
 
 {% block content %}
 <div class="fast-mark-container">
-    <!-- Header Section -->
     <div class="mark-header">
         <div class="header-content">
             <div>
@@ -28,7 +27,6 @@
         {% csrf_token %}
 
         <div class="row g-4">
-            <!-- Left Panel: Marking Controls -->
             <div class="col-lg-5">
                 <div class="control-panel">
                     <div class="panel-header">
@@ -36,7 +34,6 @@
                     </div>
 
                     <div class="panel-body">
-                        <!-- Exam Info Card -->
                         <div class="info-card">
                             <div class="info-row">
                                 <span class="label">Total Marks:</span>
@@ -52,52 +49,32 @@
                             </div>
                         </div>
 
-                        <!-- Marking Mode Selection -->
                         <div class="form-section">
                             <label class="form-label-heading">
                                 <i class="fas fa-pen-fancy"></i> Marking Method
                             </label>
                             <div class="marking-mode-options">
-                                {% for value, label in form.marking_mode.field.choices %}
                                 <div class="mode-option">
-                                    <input 
-                                        type="radio" 
-                                        name="marking_mode" 
-                                        value="{{ value }}" 
-                                        id="mode_{{ value }}"
-                                        onchange="toggleMarkingMode('{{ value }}')"
-                                        {% if form.marking_mode.value == value %}checked{% endif %}
-                                    >
-                                    <label for="mode_{{ value }}" class="mode-label">
-                                        <span class="mode-icon">
-                                            {% if value == 'total_marks' %}
-                                            <i class="fas fa-calculator"></i>
-                                            {% else %}
-                                            <i class="fas fa-check-square"></i>
-                                            {% endif %}
-                                        </span>
-                                        <span class="mode-text">{{ label }}</span>
+                                    <input type="radio" name="marking_mode" value="per_question" id="mode_per_question" onchange="toggleMarkingMode('per_question')" checked>
+                                    <label for="mode_per_question" class="mode-label">
+                                        <span class="mode-icon"><i class="fas fa-check-square"></i></span>
+                                        <span class="mode-text">Mark Each Question Individually (Correct/Incorrect)</span>
                                     </label>
                                 </div>
-                                {% endfor %}
+                                <div class="mode-option">
+                                    <input type="radio" name="marking_mode" value="total_marks" id="mode_total_marks" onchange="toggleMarkingMode('total_marks')">
+                                    <label for="mode_total_marks" class="mode-label">
+                                        <span class="mode-icon"><i class="fas fa-calculator"></i></span>
+                                        <span class="mode-text">Enter Total Marks (Auto-distribute to questions)</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Total Marks Input (Conditional) -->
                         <div class="form-section" id="total-marks-section" style="display: none;">
                             <label class="form-label-heading">Enter Total Score</label>
                             <div class="score-input-group">
-                                <input 
-                                    type="number" 
-                                    name="total_marks_input" 
-                                    id="total_marks_input"
-                                    class="form-control score-input"
-                                    placeholder="0"
-                                    step="0.01"
-                                    min="0"
-                                    max="{{ exam.total_marks }}"
-                                    onchange="updateScoreDisplay()"
-                                >
+                                <input type="number" name="total_marks_input" id="total_marks_input" class="form-control score-input" placeholder="0" step="0.01" min="0" max="{{ exam.total_marks }}" onchange="updateScoreDisplay()">
                                 <span class="marks-label">/ {{ exam.total_marks }}</span>
                             </div>
                             <div class="percentage-bar-wrapper">
@@ -108,16 +85,9 @@
                             </div>
                         </div>
 
-                        <!-- Equal Weight Checkbox (Conditional) -->
                         <div class="form-section" id="equal-weight-section" style="display: none;">
                             <div class="form-check form-check-lg">
-                                <input 
-                                    type="checkbox" 
-                                    name="equal_weight" 
-                                    id="equal_weight"
-                                    class="form-check-input"
-                                    checked
-                                >
+                                <input type="checkbox" name="equal_weight" id="equal_weight" class="form-check-input" checked>
                                 <label class="form-check-label" for="equal_weight">
                                     <span class="weight-label">All questions have equal marks</span>
                                     <span class="weight-hint">Auto-distribute marks equally</span>
@@ -125,15 +95,11 @@
                             </div>
                         </div>
 
-                        <!-- Notes Section -->
                         <div class="form-section">
-                            <label class="form-label-heading">
-                                <i class="fas fa-sticky-note"></i> Notes
-                            </label>
+                            <label class="form-label-heading"><i class="fas fa-sticky-note"></i> Notes</label>
                             {{ form.notes }}
                         </div>
 
-                        <!-- Submit Button -->
                         <div class="form-section action-buttons">
                             <button type="submit" class="btn btn-primary btn-lg btn-block">
                                 <i class="fas fa-save"></i> Save & Mark Exam
@@ -146,7 +112,6 @@
                 </div>
             </div>
 
-            <!-- Right Panel: Questions -->
             <div class="col-lg-7">
                 {% if detected_questions %}
                 <div class="questions-panel">
@@ -166,19 +131,7 @@
                                     <div class="question-badge">Q{{ question_num }}</div>
                                     <div class="question-controls">
                                         <div class="form-check form-switch">
-                                            <input 
-                                                type="checkbox" 
-                                                class="form-check-input question-check" 
-                                                id="question_{{ question_num }}_correct"
-                                                name="question_{{ question_num }}_correct"
-                                                data-question="{{ question_num }}"
-                                                onchange="updateQuestionUI({{ question_num }})"
-                                                {% if existing_marks|dictsort|slice:':' %}
-                                                    {% for q_num, is_correct in existing_marks.items %}
-                                                        {% if q_num == question_num and is_correct %}checked{% endif %}
-                                                    {% endfor %}
-                                                {% endif %}
-                                            >
+                                            <input type="checkbox" class="form-check-input question-check" id="question_{{ question_num }}_correct" name="question_{{ question_num }}_correct" data-question="{{ question_num }}" onchange="updateQuestionUI({{ question_num }})">
                                             <label class="form-check-label" for="question_{{ question_num }}_correct">
                                                 <span class="mark-correct">✓ Correct</span>
                                             </label>
@@ -187,13 +140,7 @@
                                 </div>
 
                                 <div class="question-notes">
-                                    <textarea 
-                                        class="form-control" 
-                                        name="question_{{ question_num }}_notes"
-                                        id="question_{{ question_num }}_notes"
-                                        placeholder="Add notes..."
-                                        rows="2"
-                                    ></textarea>
+                                    <textarea class="form-control" name="question_{{ question_num }}_notes" id="question_{{ question_num }}_notes" placeholder="Add notes..." rows="2"></textarea>
                                 </div>
 
                                 <div class="question-status" id="status_{{ question_num }}">
@@ -203,7 +150,6 @@
                             {% endfor %}
                         </div>
 
-                        <!-- Quick Actions for Per-Question Mode -->
                         <div class="quick-actions" id="quick-actions-section" style="display: none;">
                             <div class="action-buttons-group">
                                 <button type="button" class="btn btn-sm btn-success" onclick="markAllCorrect()">
@@ -220,7 +166,6 @@
                     </div>
                 </div>
 
-                <!-- Summary Panel -->
                 <div class="summary-panel" id="summary-panel" style="display: none; margin-top: 20px;">
                     <div class="panel-header">
                         <h5><i class="fas fa-chart-pie"></i> Summary</h5>
@@ -285,11 +230,6 @@
     margin: 0.5rem 0 0;
     color: #666;
     font-size: 0.9rem;
-}
-
-.header-actions {
-    display: flex;
-    gap: 1rem;
 }
 
 .control-panel,
@@ -730,15 +670,15 @@ function toggleMarkingMode(mode) {
     if (mode === 'total_marks') {
         totalMarksSection.style.display = 'block';
         equalWeightSection.style.display = 'block';
-        perQuestionSection.style.display = 'none';
-        quickActionsSection.style.display = 'none';
-        summaryPanel.style.display = 'none';
+        if (perQuestionSection) perQuestionSection.style.display = 'none';
+        if (quickActionsSection) quickActionsSection.style.display = 'none';
+        if (summaryPanel) summaryPanel.style.display = 'none';
     } else {
         totalMarksSection.style.display = 'none';
         equalWeightSection.style.display = 'none';
-        perQuestionSection.style.display = 'block';
-        quickActionsSection.style.display = 'block';
-        summaryPanel.style.display = 'block';
+        if (perQuestionSection) perQuestionSection.style.display = 'block';
+        if (quickActionsSection) quickActionsSection.style.display = 'block';
+        if (summaryPanel) summaryPanel.style.display = 'block';
         updateSummary();
     }
 }
@@ -834,14 +774,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    document.getElementById('total_marks_input')?.addEventListener('input', updateScoreDisplay);
-
-    {% for question_num in detected_questions %}
-    const checkbox_{{ question_num }} = document.getElementById('question_{{ question_num }}_correct');
-    if (checkbox_{{ question_num }}) {
-        updateQuestionUI({{ question_num }});
+    const totalMarksInput = document.getElementById('total_marks_input');
+    if (totalMarksInput) {
+        totalMarksInput.addEventListener('input', updateScoreDisplay);
     }
-    {% endfor %}
 });
 </script>
 {% endblock %}
