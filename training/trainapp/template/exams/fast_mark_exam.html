@@ -126,7 +126,6 @@
                     <div class="panel-body">
                         <div id="per-question-section" class="questions-grid">
                             {% for question_id in detected_questions %}
-                            {% with safe_id=question_id|stringformat:'s'|add:'_safe' %}
                             <div class="question-card" id="question_{{ question_id }}" data-question="{{ question_id }}">
                                 <div class="question-header">
                                     <div class="question-badge">{{ question_id }}</div>
@@ -148,7 +147,6 @@
                                     <span class="status-badge status-pending">Pending</span>
                                 </div>
                             </div>
-                            {% endwith %}
                             {% endfor %}
                         </div>
 
@@ -712,7 +710,7 @@ function updateQuestionUI(questionId) {
 
     if (checkbox.checked) {
         card.classList.add('marked-correct');
-        status.innerHTML = '<span class="status-badge status-correct">✓ Correct</span>';
+        status.innerHTML = '<span class="status-badge status-correct">��� Correct</span>';
     } else {
         card.classList.add('marked-incorrect');
         status.innerHTML = '<span class="status-badge status-incorrect">✗ Incorrect</span>';
