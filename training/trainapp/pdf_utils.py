@@ -12,19 +12,36 @@ except ImportError:
 
 
 class PDFQuestionDetector:
-    """Detects question positions in PDF files using text extraction and regex patterns."""
-    
+    """Detects question positions in PDF files using text extraction and regex patterns.
+
+    Supports multiple question formats:
+    - Simple: 1., 2., 3., ... or 1), 2), 3), ...
+    - With sub-parts: 1(a), 1(b), 2(a), 2(b), ... or 1a), 1b), 2a), ...
+    - Q format: Q1, Q2, Q3, ...
+    - Question word: Question 1, Question 2, ...
+    - Parenthetical: (1), (2), (3), ...
+    """
+
+    # Patterns with capture groups for main question and optional sub-part
     QUESTION_PATTERNS = [
-        r'^\s*(\d+)\s*[\.\):\-]\s*',
-        r'^\s*Q(\d+)\s*[\.\):\-]\s*',
-        r'^\s*Question\s+(\d+)\s*[\.\):\-]\s*',
-        r'^\s*\((\d+)\)\s*',
+        # Format: 1(a), 1(b), 2(a), etc. - main question in group 1, sub-part in group 2
+        (r'^\s*(\d+)\s*\(\s*([a-zA-Z])\s*\)\s*[\.\):\-]?\s*', 'subpart'),
+        # Format: 1a), 1b), 2a), etc. - main question in group 1, sub-part in group 2
+        (r'^\s*(\d+)\s*([a-zA-Z])\s*[\)\.\:\-]\s*', 'subpart'),
+        # Format: 1., 1), 1-, 1: (simple numbered, most common)
+        (r'^\s*(\d+)\s*[\.\):\-]\s*', 'simple'),
+        # Format: Q1, Q2, Q3
+        (r'^\s*Q\s*(\d+)\s*[\.\):\-]?\s*', 'simple'),
+        # Format: Question 1, Question 2
+        (r'^\s*Question\s+(\d+)\s*[\.\):\-]?\s*', 'simple'),
+        # Format: (1), (2), (3)
+        (r'^\s*\(\s*(\d+)\s*\)\s*', 'simple'),
     ]
-    
+
     def __init__(self, pdf_path: str):
         if fitz is None:
             raise ImportError("PyMuPDF (fitz) is required for PDF processing. Install it with: pip install PyMuPDF")
-        
+
         self.pdf_path = pdf_path
         self.doc = None
         self.question_mapping = {}
@@ -73,40 +90,70 @@ class PDFQuestionDetector:
         
         return text_blocks
     
-    def detect_questions(self) -> Dict[int, Dict[str, Any]]:
-        """Detect question numbers and their positions in the PDF."""
+    def detect_questions(self) -> Dict[str, Dict[str, Any]]:
+        """Detect question numbers and their positions in the PDF.
+
+        Returns a mapping of question identifiers to their positions.
+        For simple questions: "1", "2", "3", etc.
+        For sub-part questions: "1a", "1b", "2a", "2b", etc.
+        """
         text_blocks = self.extract_text_with_coordinates()
-        
+
         question_mapping = {}
         detected_questions = []
-        
+
         for block in text_blocks:
             text = block["text"]
-            for pattern in self.QUESTION_PATTERNS:
+            for pattern, question_type in self.QUESTION_PATTERNS:
                 match = re.match(pattern, text)
                 if match:
                     try:
-                        question_num = int(match.group(1))
-                        if question_num not in question_mapping:
-                            question_mapping[question_num] = {
+                        if question_type == 'subpart':
+                            # Sub-part question: main_num + sub_letter (e.g., "1a", "1b", "2a")
+                            main_num = int(match.group(1))
+                            sub_letter = match.group(2).lower()
+                            question_id = f"{main_num}{sub_letter}"
+                        else:
+                            # Simple question: just the number
+                            question_id = match.group(1)
+
+                        # Only add if not already detected (first occurrence wins)
+                        if question_id not in question_mapping:
+                            question_mapping[question_id] = {
                                 "page": block["page"],
                                 "x": float(block["x0"]),
                                 "y": float(block["y0"]),
                                 "text": text,
+                                "question_type": question_type,
                             }
-                            detected_questions.append(question_num)
+                            detected_questions.append(question_id)
                     except (ValueError, IndexError):
                         continue
-        
-        self.question_mapping = {str(q): question_mapping[q] for q in sorted(question_mapping.keys())}
+
+        # Sort detected questions properly (numeric and alphanumeric)
+        self.detected_questions = self._sort_questions(detected_questions)
+        self.question_mapping = {str(q): question_mapping[q] for q in self.detected_questions}
         self.detected_questions = sorted(detected_questions)
         
         return self.question_mapping
     
+    def _sort_questions(self, questions: List[str]) -> List[str]:
+        """Sort questions in natural order (e.g., 1, 1a, 1b, 2, 2a, 2b, 3, etc.)"""
+        def sort_key(q: str) -> Tuple[int, str]:
+            # Extract main number and sub-letter
+            match = re.match(r'^(\d+)([a-z])?$', str(q))
+            if match:
+                main_num = int(match.group(1))
+                sub_letter = match.group(2) or ''
+                return (main_num, sub_letter)
+            return (999, q)
+
+        return sorted(questions, key=sort_key)
+
     def get_question_mapping(self) -> Dict[str, Any]:
         """Return the detected question mapping."""
         return self.question_mapping
-    
+
     def get_detected_question_count(self) -> int:
         """Return the count of detected questions."""
         return len(self.detected_questions)
@@ -149,19 +196,20 @@ class PDFMarker:
         """Set the question position mapping."""
         self.question_mapping = question_mapping
     
-    def overlay_marks(self, marks: Dict[int, bool]) -> bool:
+    def overlay_marks(self, marks: Dict[str, bool]) -> bool:
         """
         Overlay checkmarks or cross marks on the PDF.
 
         Args:
-            marks: Dictionary mapping question number to True (correct) or False (incorrect)
+            marks: Dictionary mapping question identifier (string) to True (correct) or False (incorrect)
+                  Question identifiers can be: "1", "2", "1a", "1b", "2a", etc.
         """
         if not self.doc:
             self.open_pdf()
 
         try:
-            for question_num, is_correct in marks.items():
-                question_str = str(question_num)
+            for question_id, is_correct in marks.items():
+                question_str = str(question_id)
                 if question_str not in self.question_mapping:
                     continue
 
@@ -293,7 +341,7 @@ def mark_pdf_submission(
     output_pdf: str,
     driver_name: str,
     exam_title: str,
-    marks: Dict[int, bool],
+    marks: Dict[str, bool],
     question_mapping: Dict[str, Any],
     exam_date: str = ""
 ) -> bool:
@@ -305,7 +353,8 @@ def mark_pdf_submission(
         output_pdf: Path where the marked PDF will be saved
         driver_name: Name of the driver
         exam_title: Title of the exam
-        marks: Dictionary mapping question number to True (correct) or False (incorrect)
+        marks: Dictionary mapping question identifier (string) to True (correct) or False (incorrect)
+               Question identifiers can be: "1", "2", "1a", "1b", "2a", etc.
         question_mapping: Question position mapping from template
         exam_date: Date of the exam
 

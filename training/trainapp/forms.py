@@ -93,3 +93,53 @@ class QuestionAnswerFormSet(forms.BaseInlineFormSet):
                     if question_num in question_numbers:
                         raise forms.ValidationError("Duplicate question number")
                     question_numbers.add(question_num)
+
+
+class FastExamMarkingForm(forms.Form):
+    """Form for fast exam marking with flexible marking options."""
+
+    MARKING_MODE_CHOICES = (
+        ('total_marks', 'Enter Total Marks (Auto-distribute to questions)'),
+        ('per_question', 'Mark Each Question Individually (Correct/Incorrect)'),
+    )
+
+    marking_mode = forms.ChoiceField(
+        choices=MARKING_MODE_CHOICES,
+        widget=forms.RadioSelect,
+        initial='per_question',
+        label='Marking Method'
+    )
+
+    total_marks_input = forms.DecimalField(
+        required=False,
+        decimal_places=2,
+        min_value=0,
+        label='Total Score',
+        help_text='Enter the total marks scored in this exam'
+    )
+
+    equal_weight = forms.BooleanField(
+        required=False,
+        initial=True,
+        label='Questions Have Equal Weight',
+        help_text='Check if all questions carry the same marks'
+    )
+
+    notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={
+            'rows': 3,
+            'placeholder': 'Add notes or comments about the exam...'
+        }),
+        label='Examiner Notes'
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        marking_mode = cleaned_data.get('marking_mode')
+        total_marks = cleaned_data.get('total_marks_input')
+
+        if marking_mode == 'total_marks' and (total_marks is None or total_marks == ''):
+            raise forms.ValidationError('Please enter total marks when using "Total Marks" mode')
+
+        return cleaned_data

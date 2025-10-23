@@ -1,0 +1,788 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="fast-mark-container">
+    <div class="mark-header">
+        <div class="header-content">
+            <div>
+                <h2 class="exam-title">{{ exam.title }}</h2>
+                <p class="driver-subtitle">{{ driver.first_name }} {{ driver.last_name }} | License: {{ driver.license_no|default:"N/A" }}</p>
+            </div>
+            <div class="header-actions">
+                <a href="{% url 'trainapp:submission_list' exam.id %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {% if detection_error %}
+    <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-triangle"></i> {{ detection_error }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endif %}
+
+    <form method="post" id="marking-form" class="marking-form">
+        {% csrf_token %}
+
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div class="control-panel">
+                    <div class="panel-header">
+                        <h5><i class="fas fa-tools"></i> Marking Controls</h5>
+                    </div>
+
+                    <div class="panel-body">
+                        <div class="info-card">
+                            <div class="info-row">
+                                <span class="label">Total Marks:</span>
+                                <span class="value">{{ exam.total_marks }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Questions Detected:</span>
+                                <span class="value">{{ detected_questions|length }}</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">Submitted:</span>
+                                <span class="value">{{ submission.created_at|date:"d-m-Y H:i" }}</span>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <label class="form-label-heading">
+                                <i class="fas fa-pen-fancy"></i> Marking Method
+                            </label>
+                            <div class="marking-mode-options">
+                                <div class="mode-option">
+                                    <input type="radio" name="marking_mode" value="per_question" id="mode_per_question" onchange="toggleMarkingMode('per_question')" checked>
+                                    <label for="mode_per_question" class="mode-label">
+                                        <span class="mode-icon"><i class="fas fa-check-square"></i></span>
+                                        <span class="mode-text">Mark Each Question Individually (Correct/Incorrect)</span>
+                                    </label>
+                                </div>
+                                <div class="mode-option">
+                                    <input type="radio" name="marking_mode" value="total_marks" id="mode_total_marks" onchange="toggleMarkingMode('total_marks')">
+                                    <label for="mode_total_marks" class="mode-label">
+                                        <span class="mode-icon"><i class="fas fa-calculator"></i></span>
+                                        <span class="mode-text">Enter Total Marks (Auto-distribute to questions)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section" id="total-marks-section" style="display: none;">
+                            <label class="form-label-heading">Enter Total Score</label>
+                            <div class="score-input-group">
+                                <input type="number" name="total_marks_input" id="total_marks_input" class="form-control score-input" placeholder="0" step="0.01" min="0" max="{{ exam.total_marks }}" onchange="updateScoreDisplay()">
+                                <span class="marks-label">/ {{ exam.total_marks }}</span>
+                            </div>
+                            <div class="percentage-bar-wrapper">
+                                <div class="percentage-bar">
+                                    <div class="percentage-fill" id="percentage-fill" style="width: 0%"></div>
+                                </div>
+                                <div class="percentage-text" id="percentage-text">0%</div>
+                            </div>
+                        </div>
+
+                        <div class="form-section" id="equal-weight-section" style="display: none;">
+                            <div class="form-check form-check-lg">
+                                <input type="checkbox" name="equal_weight" id="equal_weight" class="form-check-input" checked>
+                                <label class="form-check-label" for="equal_weight">
+                                    <span class="weight-label">All questions have equal marks</span>
+                                    <span class="weight-hint">Auto-distribute marks equally</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-section">
+                            <label class="form-label-heading"><i class="fas fa-sticky-note"></i> Notes</label>
+                            {{ form.notes }}
+                        </div>
+
+                        <div class="form-section action-buttons">
+                            <button type="submit" class="btn btn-primary btn-lg btn-block">
+                                <i class="fas fa-save"></i> Save & Mark Exam
+                            </button>
+                            <a href="{% url 'trainapp:submission_list' exam.id %}" class="btn btn-outline-secondary btn-block">
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-7">
+                {% if detected_questions %}
+                <div class="questions-panel">
+                    <div class="panel-header">
+                        <h5>
+                            <i class="fas fa-question-circle"></i> 
+                            Questions 
+                            <span class="badge badge-info">{{ detected_questions|length }}</span>
+                        </h5>
+                    </div>
+
+                    <div class="panel-body">
+                        <div id="per-question-section" class="questions-grid">
+                            {% for question_id in detected_questions %}
+                            <div class="question-card" id="question_{{ question_id }}" data-question="{{ question_id }}">
+                                <div class="question-header">
+                                    <div class="question-badge">{{ question_id }}</div>
+                                    <div class="question-controls">
+                                        <div class="form-check form-switch">
+                                            <input type="checkbox" class="form-check-input question-check" id="question_{{ question_id }}_correct" name="question_{{ question_id }}_correct" data-question="{{ question_id }}" onchange="updateQuestionUI('{{ question_id }}')">
+                                            <label class="form-check-label" for="question_{{ question_id }}_correct">
+                                                <span class="mark-correct">✓ Correct</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="question-notes">
+                                    <textarea class="form-control" name="question_{{ question_id }}_notes" id="question_{{ question_id }}_notes" placeholder="Add notes..." rows="2"></textarea>
+                                </div>
+
+                                <div class="question-status" id="status_{{ question_id }}">
+                                    <span class="status-badge status-pending">Pending</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="quick-actions" id="quick-actions-section" style="display: none;">
+                            <div class="action-buttons-group">
+                                <button type="button" class="btn btn-sm btn-success" onclick="markAllCorrect()">
+                                    <i class="fas fa-check-double"></i> Mark All Correct
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger" onclick="markAllIncorrect()">
+                                    <i class="fas fa-times-circle"></i> Mark All Incorrect
+                                </button>
+                                <button type="button" class="btn btn-sm btn-warning" onclick="clearAllMarks()">
+                                    <i class="fas fa-eraser"></i> Clear All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-panel" id="summary-panel" style="display: none; margin-top: 20px;">
+                    <div class="panel-header">
+                        <h5><i class="fas fa-chart-pie"></i> Summary</h5>
+                    </div>
+                    <div class="panel-body summary-content">
+                        <div class="summary-stat">
+                            <span class="stat-label">Marked Correct:</span>
+                            <span class="stat-value" id="correct-count">0</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-label">Marked Incorrect:</span>
+                            <span class="stat-value" id="incorrect-count">0</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-label">Percentage:</span>
+                            <span class="stat-value percentage" id="percentage-value">0%</span>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="no-questions-alert">
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle"></i> No Questions Auto-Detected</h5>
+                        <p>The system could not automatically detect questions in this exam PDF. Use the "Total Marks" option to score the exam.</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+
+<style>
+.fast-mark-container {
+    padding: 2rem;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+.mark-header {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border-bottom: 3px solid #667eea;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.exam-title {
+    margin: 0;
+    color: #333;
+    font-weight: 600;
+}
+
+.driver-subtitle {
+    margin: 0.5rem 0 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.control-panel,
+.questions-panel,
+.summary-panel {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+}
+
+.panel-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1rem;
+    margin: 0;
+}
+
+.panel-header h5 {
+    margin: 0;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.badge-info {
+    background-color: rgba(255, 255, 255, 0.3);
+    color: white;
+    margin-left: auto;
+}
+
+.panel-body {
+    padding: 1.5rem;
+}
+
+.info-card {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border-left: 3px solid #667eea;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.info-row:not(:last-child) {
+    border-bottom: 1px solid #e9ecef;
+}
+
+.info-row .label {
+    font-weight: 500;
+    color: #666;
+}
+
+.info-row .value {
+    color: #333;
+    font-weight: 600;
+}
+
+.form-section {
+    margin-bottom: 1.5rem;
+}
+
+.form-label-heading {
+    display: block;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 0.75rem;
+    font-size: 0.95rem;
+}
+
+.marking-mode-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.mode-option {
+    position: relative;
+}
+
+.mode-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.mode-label {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 0;
+}
+
+.mode-option input[type="radio"]:checked + .mode-label {
+    background: rgba(102, 126, 234, 0.1);
+    border-color: #667eea;
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+}
+
+.mode-icon {
+    font-size: 1.25rem;
+    color: #667eea;
+}
+
+.mode-text {
+    font-weight: 500;
+    color: #333;
+}
+
+.score-input-group {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.score-input {
+    flex: 1;
+    padding: 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+}
+
+.score-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+}
+
+.marks-label {
+    font-weight: 500;
+    color: #666;
+    white-space: nowrap;
+}
+
+.percentage-bar-wrapper {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.percentage-bar {
+    flex: 1;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.percentage-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    transition: width 0.3s ease;
+}
+
+.percentage-text {
+    font-weight: 600;
+    color: #667eea;
+    min-width: 40px;
+    text-align: right;
+}
+
+.form-check-lg {
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.weight-label {
+    display: block;
+    font-weight: 500;
+    color: #333;
+}
+
+.weight-hint {
+    display: block;
+    font-size: 0.85rem;
+    color: #999;
+    margin-top: 0.25rem;
+}
+
+.form-section textarea {
+    resize: vertical;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+
+.form-section textarea:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 8px rgba(102, 126, 234, 0.2);
+}
+
+.action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.questions-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.question-card {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-left: 4px solid #667eea;
+    border-radius: 6px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+}
+
+.question-card:hover {
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+    border-left-color: #764ba2;
+}
+
+.question-card.marked-correct {
+    background: #f0f8f5;
+    border-left-color: #28a745;
+}
+
+.question-card.marked-incorrect {
+    background: #fff5f5;
+    border-left-color: #dc3545;
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.question-badge {
+    font-weight: 600;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    min-width: 50px;
+    text-align: center;
+}
+
+.question-card.marked-correct .question-badge {
+    color: #28a745;
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.question-card.marked-incorrect .question-badge {
+    color: #dc3545;
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.question-controls {
+    flex: 1;
+    margin-left: 1rem;
+}
+
+.question-controls .form-check {
+    margin: 0;
+}
+
+.mark-correct {
+    color: #28a745;
+    font-weight: 500;
+}
+
+.question-notes {
+    margin-top: 0.75rem;
+}
+
+.question-notes textarea {
+    background: white;
+    border: 1px solid #ddd;
+}
+
+.question-status {
+    margin-top: 0.75rem;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: #e9ecef;
+    color: #666;
+}
+
+.status-correct {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-incorrect {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.quick-actions {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.action-buttons-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+
+.summary-panel {
+    border-top: 3px solid #667eea;
+}
+
+.summary-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.summary-stat {
+    text-align: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 0.5rem;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #667eea;
+}
+
+.stat-value.percentage {
+    font-size: 2rem;
+    color: #28a745;
+}
+
+.no-questions-alert {
+    padding: 1rem;
+}
+
+.alert {
+    background: #e7f3ff;
+    border: 1px solid #b3d9ff;
+    color: #004085;
+}
+
+@media (max-width: 992px) {
+    .fast-mark-container {
+        padding: 1rem;
+    }
+
+    .header-content {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .action-buttons-group {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .mark-header {
+        padding: 1rem;
+    }
+
+    .panel-body {
+        padding: 1rem;
+    }
+
+    .question-header {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .question-controls {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .mode-label {
+        padding: 0.75rem;
+    }
+
+    .summary-content {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+<script>
+function toggleMarkingMode(mode) {
+    const totalMarksSection = document.getElementById('total-marks-section');
+    const equalWeightSection = document.getElementById('equal-weight-section');
+    const perQuestionSection = document.getElementById('per-question-section');
+    const quickActionsSection = document.getElementById('quick-actions-section');
+    const summaryPanel = document.getElementById('summary-panel');
+
+    if (mode === 'total_marks') {
+        totalMarksSection.style.display = 'block';
+        equalWeightSection.style.display = 'block';
+        if (perQuestionSection) perQuestionSection.style.display = 'none';
+        if (quickActionsSection) quickActionsSection.style.display = 'none';
+        if (summaryPanel) summaryPanel.style.display = 'none';
+    } else {
+        totalMarksSection.style.display = 'none';
+        equalWeightSection.style.display = 'none';
+        if (perQuestionSection) perQuestionSection.style.display = 'block';
+        if (quickActionsSection) quickActionsSection.style.display = 'block';
+        if (summaryPanel) summaryPanel.style.display = 'block';
+        updateSummary();
+    }
+}
+
+function updateScoreDisplay() {
+    const input = document.getElementById('total_marks_input');
+    const totalMarks = parseFloat('{{ exam.total_marks }}');
+    const score = parseFloat(input.value) || 0;
+
+    const percentage = totalMarks > 0 ? (score / totalMarks) * 100 : 0;
+    const fillWidth = Math.min(percentage, 100);
+
+    document.getElementById('percentage-fill').style.width = fillWidth + '%';
+    document.getElementById('percentage-text').textContent = Math.round(percentage) + '%';
+}
+
+function updateQuestionUI(questionId) {
+    const safeId = String(questionId);
+    const checkbox = document.getElementById(`question_${safeId}_correct`);
+    const card = document.getElementById(`question_${safeId}`);
+    const status = document.getElementById(`status_${safeId}`);
+
+    if (!checkbox || !card || !status) {
+        return;
+    }
+
+    card.classList.remove('marked-correct', 'marked-incorrect');
+    status.innerHTML = '';
+
+    if (checkbox.checked) {
+        card.classList.add('marked-correct');
+        status.innerHTML = '<span class="status-badge status-correct">��� Correct</span>';
+    } else {
+        card.classList.add('marked-incorrect');
+        status.innerHTML = '<span class="status-badge status-incorrect">✗ Incorrect</span>';
+    }
+
+    updateSummary();
+}
+
+function updateSummary() {
+    const checkboxes = document.querySelectorAll('.question-check');
+    let correct = 0;
+    let incorrect = 0;
+
+    checkboxes.forEach(checkbox => {
+        if (checkbox.checked) {
+            correct++;
+        } else {
+            incorrect++;
+        }
+    });
+
+    const total = checkboxes.length;
+    const percentage = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    document.getElementById('correct-count').textContent = correct;
+    document.getElementById('incorrect-count').textContent = incorrect;
+    document.getElementById('percentage-value').textContent = percentage + '%';
+}
+
+function markAllCorrect() {
+    document.querySelectorAll('.question-check').forEach(checkbox => {
+        checkbox.checked = true;
+        const questionNum = checkbox.dataset.question;
+        updateQuestionUI(questionNum);
+    });
+}
+
+function markAllIncorrect() {
+    document.querySelectorAll('.question-check').forEach(checkbox => {
+        checkbox.checked = false;
+        const questionNum = checkbox.dataset.question;
+        updateQuestionUI(questionNum);
+    });
+}
+
+function clearAllMarks() {
+    if (confirm('Are you sure you want to clear all marks?')) {
+        document.querySelectorAll('.question-check').forEach(checkbox => {
+            checkbox.checked = false;
+            const questionNum = checkbox.dataset.question;
+            document.getElementById(`question_${questionNum}_notes`).value = '';
+            updateQuestionUI(questionNum);
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const markingMode = document.querySelector('input[name="marking_mode"]:checked');
+    if (markingMode) {
+        toggleMarkingMode(markingMode.value);
+    }
+
+    document.querySelectorAll('input[name="marking_mode"]').forEach(radio => {
+        radio.addEventListener('change', function() {
+            toggleMarkingMode(this.value);
+        });
+    });
+
+    const totalMarksInput = document.getElementById('total_marks_input');
+    if (totalMarksInput) {
+        totalMarksInput.addEventListener('input', updateScoreDisplay);
+    }
+});
+</script>
+{% endblock %}
