@@ -172,3 +172,181 @@ def view_marked_submission(request, submission_id: int):
         'submission': submission,
         'marked_submission': marked_submission,
     })
+
+
+@staff_member_required
+@transaction.atomic
+def fast_mark_exam(request, exam_id: int, driver_id: int):
+    """
+    Fast marking interface with flexible input modes and auto question detection.
+    Supports marking via total marks (auto-distribute) or per-question marking.
+    """
+    exam = get_object_or_404(ExamPaper, pk=exam_id)
+    driver = get_object_or_404(Driver, pk=driver_id)
+
+    if not ExamDistribution.objects.filter(exam=exam, driver=driver).exists():
+        raise Http404("Driver not assigned to this exam")
+
+    submission, created = Submission.objects.get_or_create(exam=exam, driver=driver)
+
+    question_mapping = {}
+    detected_questions = []
+    detection_error = None
+
+    try:
+        if exam.file:
+            pdf_path = exam.file.path
+            if os.path.exists(pdf_path):
+                question_mapping, detected_count = detect_questions_in_pdf(pdf_path)
+                detected_questions = sorted([int(q) for q in question_mapping.keys()])
+    except Exception as e:
+        detection_error = f"Could not auto-detect questions: {str(e)}"
+
+    if request.method == 'POST':
+        form = FastExamMarkingForm(request.POST)
+        if form.is_valid():
+            marking_mode = form.cleaned_data.get('marking_mode')
+            total_marks_input = form.cleaned_data.get('total_marks_input')
+            equal_weight = form.cleaned_data.get('equal_weight')
+            notes = form.cleaned_data.get('notes')
+
+            question_marks = {}
+            marks_by_question = {}
+            correct_questions = []
+
+            if marking_mode == 'total_marks':
+                score = total_marks_input
+                submission.score = score
+                submission.notes = notes
+                submission.graded_by = request.user
+                submission.graded_at = timezone.now()
+                submission.save()
+
+                ExamDistribution.objects.filter(exam=exam, driver=driver).update(status='scored')
+
+                AuditHistory.objects.create(
+                    action='fast_mark_exam_total',
+                    entity_type='Submission',
+                    entity_id=str(submission.id),
+                    user=request.user,
+                    details={
+                        'exam_id': exam.id,
+                        'driver_id': driver.id,
+                        'score': float(score),
+                        'total_marks': exam.total_marks,
+                        'mode': 'total_marks',
+                    },
+                )
+
+                messages.success(request, f"Exam marked with score {score}/{exam.total_marks}")
+                return redirect('trainapp:submission_list', exam_id=exam_id)
+
+            elif marking_mode == 'per_question':
+                if not detected_questions:
+                    messages.error(request, "No questions detected in exam. Please mark questions manually or enter total marks.")
+                    return redirect('trainapp:fast_mark_exam', exam_id=exam_id, driver_id=driver_id)
+
+                correct_questions = []
+                total_questions = len(detected_questions)
+
+                for question_num in detected_questions:
+                    is_correct = request.POST.get(f'question_{question_num}_correct') == 'on'
+                    if is_correct:
+                        correct_questions.append(question_num)
+
+                    QuestionAnswer.objects.update_or_create(
+                        submission=submission,
+                        question_number=question_num,
+                        defaults={
+                            'is_correct': is_correct,
+                            'notes': request.POST.get(f'question_{question_num}_notes', ''),
+                        }
+                    )
+
+                    marks_by_question[question_num] = is_correct
+
+                if equal_weight and total_questions > 0:
+                    marks_per_question = exam.total_marks / total_questions
+                    score = len(correct_questions) * marks_per_question
+                else:
+                    score = len(correct_questions)
+
+                submission.score = score
+                submission.notes = notes
+                submission.graded_by = request.user
+                submission.graded_at = timezone.now()
+                submission.save()
+
+                ExamDistribution.objects.filter(exam=exam, driver=driver).update(status='scored')
+
+                marked_submission, _ = MarkedExamSubmission.objects.get_or_create(submission=submission)
+                marked_submission.total_correct = len(correct_questions)
+                marked_submission.total_questions = total_questions
+                marked_submission.save()
+
+                try:
+                    if exam.file and os.path.exists(exam.file.path) and question_mapping:
+                        marked_pdf_dir = os.path.join(settings.MEDIA_ROOT, 'marked_submissions')
+                        os.makedirs(marked_pdf_dir, exist_ok=True)
+                        marked_pdf_path = os.path.join(
+                            marked_pdf_dir,
+                            f"marked_{submission.id}_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+                        )
+
+                        mark_pdf_submission(
+                            source_pdf=exam.file.path,
+                            output_pdf=marked_pdf_path,
+                            driver_name=f"{driver.first_name} {driver.last_name}",
+                            exam_title=exam.title,
+                            marks=marks_by_question,
+                            question_mapping=question_mapping,
+                            exam_date=submission.created_at.strftime('%d-%m-%Y')
+                        )
+
+                        marked_submission.marked_pdf_file = marked_pdf_path.replace(settings.MEDIA_ROOT + '/', '')
+                        marked_submission.is_generated = True
+                        marked_submission.generation_error = ''
+                        marked_submission.save()
+
+                except Exception as e:
+                    marked_submission.is_generated = False
+                    marked_submission.generation_error = str(e)
+                    marked_submission.save()
+
+                AuditHistory.objects.create(
+                    action='fast_mark_exam_per_question',
+                    entity_type='Submission',
+                    entity_id=str(submission.id),
+                    user=request.user,
+                    details={
+                        'exam_id': exam.id,
+                        'driver_id': driver.id,
+                        'total_questions': total_questions,
+                        'correct_questions': len(correct_questions),
+                        'score': float(score),
+                        'mode': 'per_question',
+                        'equal_weight': equal_weight,
+                    },
+                )
+
+                messages.success(request, f"Exam marked: {len(correct_questions)}/{total_questions} correct")
+                return redirect('trainapp:submission_list', exam_id=exam_id)
+
+    else:
+        form = FastExamMarkingForm()
+
+        existing_answers = QuestionAnswer.objects.filter(submission=submission).values_list('question_number', 'is_correct')
+        existing_marks = {qa[0]: qa[1] for qa in existing_answers}
+
+        context = {
+            'exam': exam,
+            'driver': driver,
+            'submission': submission,
+            'form': form,
+            'detected_questions': detected_questions,
+            'question_mapping': question_mapping,
+            'existing_marks': existing_marks,
+            'detection_error': detection_error,
+        }
+
+        return render(request, 'exams/fast_mark_exam.html', context)
