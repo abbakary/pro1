@@ -52,7 +52,7 @@
                 </div>
                 <div class="toolbar-group">
                     {% if marked_submission.marked_pdf_file %}
-                    <a href="{{ marked_submission.marked_pdf_file.url }}" download="marked_{{ submission.driver.first_name }}_{{ submission.exam.title }}.pdf" class="toolbar-btn" title="Download PDF">
+                    <a href="{% url 'trainapp:download_marked_pdf' submission.id %}" class="toolbar-btn" title="Download Marked PDF" target="_blank">
                         <i class="fas fa-download"></i> Download
                     </a>
                     {% endif %}
