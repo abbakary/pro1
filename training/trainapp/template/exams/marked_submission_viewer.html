@@ -21,6 +21,11 @@
     <div class="container mt-4">
         <div class="alert alert-warning" role="alert">
             <i class="fas fa-exclamation-circle"></i> {{ error }}
+            {% if marked_submission and marked_submission.generation_error %}
+            <div class="mt-2 small text-muted">
+                <strong>Generation Error:</strong> {{ marked_submission.generation_error }}
+            </div>
+            {% endif %}
         </div>
         <a href="{% url 'trainapp:driver_submissions' submission.driver.id %}" class="btn btn-outline-secondary">
             Back to My Exams
