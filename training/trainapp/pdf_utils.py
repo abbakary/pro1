@@ -137,10 +137,23 @@ class PDFQuestionDetector:
         
         return self.question_mapping
     
+    def _sort_questions(self, questions: List[str]) -> List[str]:
+        """Sort questions in natural order (e.g., 1, 1a, 1b, 2, 2a, 2b, 3, etc.)"""
+        def sort_key(q: str) -> Tuple[int, str]:
+            # Extract main number and sub-letter
+            match = re.match(r'^(\d+)([a-z])?$', str(q))
+            if match:
+                main_num = int(match.group(1))
+                sub_letter = match.group(2) or ''
+                return (main_num, sub_letter)
+            return (999, q)
+
+        return sorted(questions, key=sort_key)
+
     def get_question_mapping(self) -> Dict[str, Any]:
         """Return the detected question mapping."""
         return self.question_mapping
-    
+
     def get_detected_question_count(self) -> int:
         """Return the count of detected questions."""
         return len(self.detected_questions)
