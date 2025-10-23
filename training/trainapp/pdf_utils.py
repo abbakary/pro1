@@ -12,19 +12,36 @@ except ImportError:
 
 
 class PDFQuestionDetector:
-    """Detects question positions in PDF files using text extraction and regex patterns."""
-    
+    """Detects question positions in PDF files using text extraction and regex patterns.
+
+    Supports multiple question formats:
+    - Simple: 1., 2., 3., ... or 1), 2), 3), ...
+    - With sub-parts: 1(a), 1(b), 2(a), 2(b), ... or 1a), 1b), 2a), ...
+    - Q format: Q1, Q2, Q3, ...
+    - Question word: Question 1, Question 2, ...
+    - Parenthetical: (1), (2), (3), ...
+    """
+
+    # Patterns with capture groups for main question and optional sub-part
     QUESTION_PATTERNS = [
-        r'^\s*(\d+)\s*[\.\):\-]\s*',
-        r'^\s*Q(\d+)\s*[\.\):\-]\s*',
-        r'^\s*Question\s+(\d+)\s*[\.\):\-]\s*',
-        r'^\s*\((\d+)\)\s*',
+        # Format: 1(a), 1(b), 2(a), etc. - main question in group 1, sub-part in group 2
+        (r'^\s*(\d+)\s*\(\s*([a-zA-Z])\s*\)\s*[\.\):\-]?\s*', 'subpart'),
+        # Format: 1a), 1b), 2a), etc. - main question in group 1, sub-part in group 2
+        (r'^\s*(\d+)\s*([a-zA-Z])\s*[\)\.\:\-]\s*', 'subpart'),
+        # Format: 1., 1), 1-, 1: (simple numbered, most common)
+        (r'^\s*(\d+)\s*[\.\):\-]\s*', 'simple'),
+        # Format: Q1, Q2, Q3
+        (r'^\s*Q\s*(\d+)\s*[\.\):\-]?\s*', 'simple'),
+        # Format: Question 1, Question 2
+        (r'^\s*Question\s+(\d+)\s*[\.\):\-]?\s*', 'simple'),
+        # Format: (1), (2), (3)
+        (r'^\s*\(\s*(\d+)\s*\)\s*', 'simple'),
     ]
-    
+
     def __init__(self, pdf_path: str):
         if fitz is None:
             raise ImportError("PyMuPDF (fitz) is required for PDF processing. Install it with: pip install PyMuPDF")
-        
+
         self.pdf_path = pdf_path
         self.doc = None
         self.question_mapping = {}
