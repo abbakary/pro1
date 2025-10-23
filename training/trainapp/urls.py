@@ -1,7 +1,7 @@
 from django.urls import path
 from . import views
 from .marking_views import (
-    mark_exam_paper, download_marked_pdf, driver_submissions, view_marked_submission
+    mark_exam_paper, download_marked_pdf, driver_submissions, view_marked_submission, fast_mark_exam
 )
 
 app_name = 'trainapp'
