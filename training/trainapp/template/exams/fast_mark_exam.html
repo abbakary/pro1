@@ -805,6 +805,58 @@ function clearAllMarks() {
     }
 }
 
+function toggleWeightedMarks() {
+    const useWeightedMarks = document.getElementById('use_weighted_marks').checked;
+    const detectedQuestions = document.querySelectorAll('[id^="weighted_marks_"]');
+
+    detectedQuestions.forEach(element => {
+        element.style.display = useWeightedMarks ? 'block' : 'none';
+    });
+
+    if (useWeightedMarks) {
+        updateTotalMarks();
+    }
+}
+
+function updateTotalMarks() {
+    const useWeightedMarks = document.getElementById('use_weighted_marks').checked;
+
+    if (!useWeightedMarks) {
+        return;
+    }
+
+    let totalObtained = 0;
+    let totalAvailable = 0;
+
+    document.querySelectorAll('.marks-input').forEach(input => {
+        const questionCard = input.closest('.question-card');
+        const totalInput = questionCard.querySelector('.marks-total-input');
+
+        const obtained = parseFloat(input.value) || 0;
+        const total = parseFloat(totalInput.value) || 1;
+
+        totalObtained += obtained;
+        totalAvailable += total;
+
+        // Update percentage for this question
+        const questionId = questionCard.getAttribute('data-question');
+        const percentageElement = document.getElementById(`percentage_${questionId}`);
+        if (percentageElement && total > 0) {
+            const percentage = Math.round((obtained / total) * 100);
+            percentageElement.textContent = percentage + '%';
+        }
+    });
+
+    // Update summary
+    const summaryPanel = document.getElementById('summary-panel');
+    if (summaryPanel && summaryPanel.style.display !== 'none') {
+        const percentage = totalAvailable > 0 ? Math.round((totalObtained / totalAvailable) * 100) : 0;
+        document.getElementById('correct-count').textContent = totalObtained.toFixed(2);
+        document.getElementById('incorrect-count').textContent = (totalAvailable - totalObtained).toFixed(2);
+        document.getElementById('percentage-value').textContent = percentage + '%';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const markingMode = document.querySelector('input[name="marking_mode"]:checked');
     if (markingMode) {
