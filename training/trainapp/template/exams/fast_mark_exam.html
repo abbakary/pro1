@@ -149,6 +149,34 @@
                                     </div>
                                 </div>
 
+                                <!-- Weighted Marks Input -->
+                                <div class="weighted-marks-input" id="weighted_marks_{{ question_id }}" style="display: none;">
+                                    <div class="marks-input-group">
+                                        <label for="question_{{ question_id }}_marks" class="marks-label">Marks Obtained:</label>
+                                        <div class="marks-input-row">
+                                            <input type="number"
+                                                   class="form-control marks-input"
+                                                   id="question_{{ question_id }}_marks"
+                                                   name="question_{{ question_id }}_marks"
+                                                   placeholder="0"
+                                                   step="0.01"
+                                                   min="0"
+                                                   onchange="updateTotalMarks()">
+                                            <span class="marks-separator">/</span>
+                                            <input type="number"
+                                                   class="form-control marks-total-input"
+                                                   id="question_{{ question_id }}_total"
+                                                   name="question_{{ question_id }}_total"
+                                                   placeholder="1"
+                                                   value="1"
+                                                   step="0.01"
+                                                   min="0.01"
+                                                   onchange="updateTotalMarks()">
+                                        </div>
+                                    </div>
+                                    <div class="marks-percentage" id="percentage_{{ question_id }}">0%</div>
+                                </div>
+
                                 <div class="question-notes">
                                     <textarea class="form-control" name="question_{{ question_id }}_notes" id="question_{{ question_id }}_notes" placeholder="Add notes..." rows="2"></textarea>
                                 </div>
