@@ -95,6 +95,16 @@
                             </div>
                         </div>
 
+                        <div class="form-section" id="weighted-marks-section" style="display: block;">
+                            <div class="form-check form-check-lg">
+                                <input type="checkbox" name="use_weighted_marks" id="use_weighted_marks" class="form-check-input" onchange="toggleWeightedMarks()">
+                                <label class="form-check-label" for="use_weighted_marks">
+                                    <span class="weight-label"><i class="fas fa-balance-scale"></i> Use Weighted Marks</span>
+                                    <span class="weight-hint">Different marks for different questions</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="form-section">
                             <label class="form-label-heading"><i class="fas fa-sticky-note"></i> Notes</label>
                             {{ form.notes }}
