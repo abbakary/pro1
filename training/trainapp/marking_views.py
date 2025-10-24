@@ -518,3 +518,152 @@ def download_batch_marked_pdfs(request, batch_id):
     response['Content-Disposition'] = f'attachment; filename="marked_exams_{batch.name}_{timezone.now().strftime("%Y%m%d")}.zip"'
 
     return response
+
+
+@staff_member_required
+def exam_analysis_dashboard(request, batch_id=None):
+    """
+    Advanced analytics and KPI dashboard for exam performance.
+    Shows:
+    - Questions with highest/lowest pass rates
+    - Driver performance comparison
+    - Batch performance trends
+    - Question difficulty analysis
+    """
+    batches = Batch.objects.all().order_by('name')
+
+    batch_id = batch_id or request.GET.get('batch')
+    if batch_id:
+        batch = get_object_or_404(Batch, pk=batch_id)
+    else:
+        batch = batches.first()
+
+    analysis_data = {
+        'batch': batch,
+        'batches': batches,
+        'question_analysis': [],
+        'driver_performance': [],
+        'exam_performance': {},
+        'batch_statistics': {},
+    }
+
+    if batch:
+        drivers = batch.drivers.all()
+        submissions = Submission.objects.filter(driver__in=drivers).select_related('exam', 'driver').prefetch_related('question_answers')
+
+        # Question analysis
+        question_stats = {}
+        exam_stats = {}
+        driver_stats = {}
+
+        for submission in submissions:
+            exam_key = submission.exam.title
+            driver_key = f"{submission.driver.first_name} {submission.driver.last_name}"
+
+            if exam_key not in exam_stats:
+                exam_stats[exam_key] = {'total': 0, 'correct': 0, 'marks_total': 0, 'marks_obtained': 0, 'submissions': 0}
+
+            if driver_key not in driver_stats:
+                driver_stats[driver_key] = {'exams': 0, 'total_correct': 0, 'total_questions': 0, 'avg_percentage': 0}
+
+            marked_sub = MarkedExamSubmission.objects.filter(submission=submission).first()
+            if marked_sub:
+                exam_stats[exam_key]['submissions'] += 1
+                exam_stats[exam_key]['total'] += marked_sub.total_questions
+                exam_stats[exam_key]['correct'] += marked_sub.total_correct
+
+                if marked_sub.is_weighted_scoring:
+                    exam_stats[exam_key]['marks_total'] += marked_sub.total_marks_available
+                    exam_stats[exam_key]['marks_obtained'] += marked_sub.total_marks_obtained
+
+                driver_stats[driver_key]['exams'] += 1
+                driver_stats[driver_key]['total_questions'] += marked_sub.total_questions
+                driver_stats[driver_key]['total_correct'] += marked_sub.total_correct
+
+            # Per-question analysis
+            for qa in submission.question_answers.all():
+                q_id = f"Q{qa.question_number}"
+                if q_id not in question_stats:
+                    question_stats[q_id] = {
+                        'question_number': qa.question_number,
+                        'total_attempts': 0,
+                        'correct_attempts': 0,
+                        'total_marks': 0,
+                        'marks_obtained': 0,
+                        'submissions': []
+                    }
+
+                question_stats[q_id]['total_attempts'] += 1
+                if qa.is_correct:
+                    question_stats[q_id]['correct_attempts'] += 1
+
+                question_stats[q_id]['total_marks'] += float(qa.marks_total)
+                question_stats[q_id]['marks_obtained'] += float(qa.marks_obtained)
+                question_stats[q_id]['submissions'].append({
+                    'driver': submission.driver.first_name,
+                    'correct': qa.is_correct,
+                    'marks': float(qa.marks_obtained),
+                })
+
+        # Process question analysis
+        for q_id, stats in question_stats.items():
+            pass_rate = (stats['correct_attempts'] / stats['total_attempts'] * 100) if stats['total_attempts'] > 0 else 0
+            avg_marks = (stats['marks_obtained'] / stats['total_marks']) * 100 if stats['total_marks'] > 0 else 0
+
+            analysis_data['question_analysis'].append({
+                'question': q_id,
+                'attempts': stats['total_attempts'],
+                'correct': stats['correct_attempts'],
+                'pass_rate': round(pass_rate, 2),
+                'avg_marks_percentage': round(avg_marks, 2),
+                'difficulty': 'Hard' if pass_rate < 40 else 'Medium' if pass_rate < 70 else 'Easy',
+            })
+
+        # Sort by pass rate (lowest first - hardest questions)
+        analysis_data['question_analysis'].sort(key=lambda x: x['pass_rate'])
+
+        # Process exam performance
+        for exam_title, stats in exam_stats.items():
+            if stats['submissions'] > 0:
+                pass_rate = (stats['correct'] / stats['total'] * 100) if stats['total'] > 0 else 0
+                avg_marks_pct = (stats['marks_obtained'] / stats['marks_total'] * 100) if stats['marks_total'] > 0 else pass_rate
+
+                analysis_data['exam_performance'][exam_title] = {
+                    'submissions': stats['submissions'],
+                    'total_questions': stats['total'],
+                    'correct_answers': stats['correct'],
+                    'pass_rate': round(pass_rate, 2),
+                    'avg_marks_percentage': round(avg_marks_pct, 2),
+                }
+
+        # Process driver performance
+        for driver_name, stats in driver_stats.items():
+            if stats['exams'] > 0:
+                avg_pct = (stats['total_correct'] / stats['total_questions'] * 100) if stats['total_questions'] > 0 else 0
+                analysis_data['driver_performance'].append({
+                    'driver': driver_name,
+                    'exams_taken': stats['exams'],
+                    'total_questions': stats['total_questions'],
+                    'correct_answers': stats['total_correct'],
+                    'average_percentage': round(avg_pct, 2),
+                    'status': 'Pass' if avg_pct >= 75 else 'At Risk' if avg_pct >= 50 else 'Fail',
+                })
+
+        analysis_data['driver_performance'].sort(key=lambda x: x['average_percentage'], reverse=True)
+
+        # Batch statistics
+        if submissions.count() > 0:
+            total_questions = sum(m.total_questions for m in MarkedExamSubmission.objects.filter(submission__driver__in=drivers))
+            total_correct = sum(m.total_correct for m in MarkedExamSubmission.objects.filter(submission__driver__in=drivers))
+            overall_percentage = (total_correct / total_questions * 100) if total_questions > 0 else 0
+
+            analysis_data['batch_statistics'] = {
+                'total_drivers': drivers.count(),
+                'drivers_passed': sum(1 for d in analysis_data['driver_performance'] if d['status'] == 'Pass'),
+                'total_submissions': submissions.count(),
+                'total_questions': total_questions,
+                'total_correct': total_correct,
+                'overall_percentage': round(overall_percentage, 2),
+            }
+
+    return render(request, 'exams/exam_analysis_dashboard.html', analysis_data)
