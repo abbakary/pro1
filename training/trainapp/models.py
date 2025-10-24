@@ -201,13 +201,35 @@ class MarkedExamSubmission(TimeStampedModel):
     marked_pdf_file = models.FileField(upload_to='marked_submissions/', blank=True)
     total_correct = models.PositiveIntegerField(default=0)
     total_questions = models.PositiveIntegerField(default=0)
+    total_marks_obtained = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        help_text="Total marks obtained (for weighted scoring)"
+    )
+    total_marks_available = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        help_text="Total marks available (for weighted scoring)"
+    )
+    is_weighted_scoring = models.BooleanField(
+        default=False,
+        help_text="Whether this exam uses weighted scoring (per-question marks)"
+    )
     is_generated = models.BooleanField(default=False)
     generation_error = models.TextField(blank=True)
 
     def get_percentage_score(self) -> float:
-        if self.total_questions == 0:
-            return 0.0
-        return round((self.total_correct / self.total_questions) * 100, 2)
+        """Calculate percentage score based on marking mode"""
+        if self.is_weighted_scoring:
+            if self.total_marks_available == 0:
+                return 0.0
+            return round((float(self.total_marks_obtained) / float(self.total_marks_available)) * 100, 2)
+        else:
+            if self.total_questions == 0:
+                return 0.0
+            return round((self.total_correct / self.total_questions) * 100, 2)
 
     class Meta:
         verbose_name = 'Marked Exam Submission'
