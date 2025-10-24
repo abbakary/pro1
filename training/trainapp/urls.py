@@ -57,6 +57,10 @@ urlpatterns = [
     path('results-gallery/<int:batch_id>/', exam_results_gallery, name='exam_results_gallery_batch'),
     path('results-gallery/<int:batch_id>/download/', download_batch_marked_pdfs, name='download_batch_marked_pdfs'),
 
+    # Exam Analysis & KPI Dashboard
+    path('analytics/', exam_analysis_dashboard, name='exam_analysis_dashboard'),
+    path('analytics/<int:batch_id>/', exam_analysis_dashboard, name='exam_analysis_dashboard_batch'),
+
     # Printable / Embedded
     path('exams/<int:exam_id>/paper/<int:driver_id>/', views.printable_paper, name='printable_paper'),
 ]
