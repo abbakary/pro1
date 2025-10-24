@@ -1,21 +1,24 @@
 import json
 import os
 import tempfile
+import zipfile
 from datetime import datetime
 from decimal import Decimal
+from io import BytesIO
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db import transaction
+from django.db.models import Q
 from django.http import Http404, JsonResponse, FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
 from .models import (
-    ExamPaper, Driver, Submission, ExamDistribution,
+    ExamPaper, Driver, Submission, ExamDistribution, Batch,
     MarkedExamSubmission, AuditHistory, QuestionAnswer, ExamTemplate
 )
 from .pdf_utils import PDFMarker, detect_questions_in_pdf, mark_pdf_submission
