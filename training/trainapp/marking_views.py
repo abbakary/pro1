@@ -288,6 +288,10 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
 
                 correct_questions = []
                 total_questions = len(detected_questions)
+                use_weighted_marks = request.POST.get('use_weighted_marks') == 'on'
+
+                total_marks_obtained = 0
+                total_marks_available = 0
 
                 for question_id in detected_questions:
                     # Question ID may contain letters (e.g., "1a", "1b") or just numbers (e.g., "1", "2")
@@ -298,19 +302,42 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
                     if is_correct:
                         correct_questions.append(question_id_str)
 
+                    # Handle weighted marks if enabled
+                    marks_obtained = 0
+                    marks_total = 1
+
+                    if use_weighted_marks:
+                        try:
+                            marks_total = float(request.POST.get(f'question_{question_id_str}_total', 1) or 1)
+                            marks_obtained = float(request.POST.get(f'question_{question_id_str}_marks', 0) or 0)
+                        except (ValueError, TypeError):
+                            marks_obtained = 1 if is_correct else 0
+                            marks_total = 1
+                    else:
+                        marks_obtained = 1 if is_correct else 0
+                        marks_total = 1
+
+                    total_marks_obtained += marks_obtained
+                    total_marks_available += marks_total
+
                     # Store question answer
                     QuestionAnswer.objects.update_or_create(
                         submission=submission,
                         question_number=question_id_str,
                         defaults={
                             'is_correct': is_correct,
+                            'marks_obtained': marks_obtained,
+                            'marks_total': marks_total,
                             'notes': request.POST.get(f'question_{question_id_str}_notes', ''),
                         }
                     )
 
                     marks_by_question[question_id_str] = is_correct
 
-                if equal_weight and total_questions > 0:
+                # Calculate score based on marking mode
+                if use_weighted_marks:
+                    score = total_marks_obtained
+                elif equal_weight and total_questions > 0:
                     marks_per_question = exam.total_marks / total_questions
                     score = len(correct_questions) * marks_per_question
                 else:
@@ -327,6 +354,9 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
                 marked_submission, _ = MarkedExamSubmission.objects.get_or_create(submission=submission)
                 marked_submission.total_correct = len(correct_questions)
                 marked_submission.total_questions = total_questions
+                marked_submission.is_weighted_scoring = use_weighted_marks
+                marked_submission.total_marks_obtained = total_marks_obtained
+                marked_submission.total_marks_available = total_marks_available
                 marked_submission.save()
 
                 try:
