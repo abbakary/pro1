@@ -168,6 +168,18 @@ class QuestionAnswer(TimeStampedModel):
     submission = models.ForeignKey(Submission, on_delete=models.CASCADE, related_name='question_answers')
     question_number = models.PositiveIntegerField()
     is_correct = models.BooleanField(default=False)
+    marks_obtained = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        help_text="Marks obtained for this question (for weighted scoring)"
+    )
+    marks_total = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=1,
+        help_text="Total marks for this question (if weighted scoring is used)"
+    )
     notes = models.TextField(blank=True)
 
     class Meta:
@@ -175,7 +187,13 @@ class QuestionAnswer(TimeStampedModel):
         ordering = ['question_number']
 
     def __str__(self) -> str:
-        return f"Q{self.question_number} - {self.submission.driver} - {'✓' if self.is_correct else '✗'}"
+        return f"Q{self.question_number} - {self.submission.driver} - {'✓' if self.is_correct else '✗'} ({self.marks_obtained}/{self.marks_total})"
+
+    def get_percentage_score(self) -> float:
+        """Calculate percentage score for this question"""
+        if self.marks_total == 0:
+            return 0.0
+        return round((float(self.marks_obtained) / float(self.marks_total)) * 100, 2)
 
 
 class MarkedExamSubmission(TimeStampedModel):
