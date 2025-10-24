@@ -1,0 +1,1271 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="results-gallery-container">
+    <!-- Header -->
+    <div class="gallery-header">
+        <div class="header-top">
+            <h1 class="gallery-title">
+                <i class="fas fa-graduation-cap"></i> Exam Results Gallery
+            </h1>
+            <p class="gallery-subtitle">View and manage all marked exam papers</p>
+        </div>
+        
+        <!-- Batch Selection -->
+        <div class="batch-selector-wrapper">
+            <div class="batch-selector">
+                <label for="batch-select" class="batch-label">
+                    <i class="fas fa-folder"></i> Select Batch:
+                </label>
+                <select id="batch-select" class="batch-select-input">
+                    <option value="">-- All Batches --</option>
+                    {% for batch in batches %}
+                    <option value="{{ batch.id }}" {% if selected_batch.id == batch.id %}selected{% endif %}>
+                        {{ batch.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Quick Stats -->
+            {% if selected_batch %}
+            <div class="quick-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Total Papers:</span>
+                    <span class="stat-value">{{ total_papers }}</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Average Score:</span>
+                    <span class="stat-value">{{ average_percentage|floatformat:1 }}%</span>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Action Buttons -->
+            {% if marked_submissions %}
+            <div class="action-buttons">
+                <a href="{% url 'trainapp:download_batch_marked_pdfs' selected_batch.id %}" class="btn btn-download">
+                    <i class="fas fa-download"></i> Download All (ZIP)
+                </a>
+                <button class="btn btn-print" onclick="printAllResults()">
+                    <i class="fas fa-print"></i> Print All
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="gallery-content">
+        {% if marked_submissions %}
+        <div class="results-layout">
+            <!-- Left Side: Results List -->
+            <div class="results-list-container">
+                <div class="list-header">
+                    <h3>Marked Papers</h3>
+                    <span class="count-badge">{{ total_papers }}</span>
+                </div>
+                
+                <div class="results-list">
+                    {% for submission in marked_submissions %}
+                    <div class="result-card" data-submission-id="{{ submission.id }}" data-pdf-url="{{ submission.pdf_url }}">
+                        <div class="card-header">
+                            <div class="driver-info-mini">
+                                <div class="driver-avatar">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div class="driver-basic">
+                                    <p class="driver-name">{{ submission.driver.first_name }} {{ submission.driver.last_name }}</p>
+                                    <p class="driver-license">{{ submission.driver.license_no }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <p class="exam-title">{{ submission.exam.title }}</p>
+                            
+                            <div class="score-indicator">
+                                <div class="score-badge {% if submission.percentage >= 75 %}score-pass{% elif submission.percentage >= 50 %}score-medium{% else %}score-fail{% endif %}">
+                                    {{ submission.total_correct }}/{{ submission.total_questions }}
+                                </div>
+                                <div class="percentage-text">{{ submission.percentage|floatformat:1 }}%</div>
+                            </div>
+                            
+                            <p class="marked-date">
+                                <i class="fas fa-calendar-check"></i> 
+                                {% if submission.graded_at %}
+                                    {{ submission.graded_at|date:"d M, Y H:i" }}
+                                {% else %}
+                                    Not marked
+                                {% endif %}
+                            </p>
+                        </div>
+                        
+                        <div class="card-footer">
+                            <button class="btn-view-pdf" onclick="viewPDF({{ submission.id }})">
+                                <i class="fas fa-file-pdf"></i> View PDF
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Right Side: PDF Viewer & Driver Info -->
+            <div class="viewer-panel">
+                <div class="pdf-viewer-card" id="pdf-viewer-card" style="display: none;">
+                    <!-- PDF Toolbar -->
+                    <div class="pdf-toolbar">
+                        <div class="toolbar-left">
+                            <button id="pdf-prev-btn" class="toolbar-btn" title="Previous page">
+                                <i class="fas fa-chevron-up"></i>
+                            </button>
+                            <input type="number" id="pdf-page-input" min="1" value="1" class="toolbar-input">
+                            <span class="page-info">of <span id="pdf-total-pages">0</span></span>
+                            <button id="pdf-next-btn" class="toolbar-btn" title="Next page">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="toolbar-right">
+                            <button id="pdf-zoom-out-btn" class="toolbar-btn" title="Zoom out">
+                                <i class="fas fa-minus"></i>
+                            </button>
+                            <span class="zoom-level" id="pdf-zoom-level">100%</span>
+                            <button id="pdf-zoom-in-btn" class="toolbar-btn" title="Zoom in">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                            <a id="pdf-download-btn" class="toolbar-btn" title="Download PDF" download>
+                                <i class="fas fa-download"></i>
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- PDF Canvas -->
+                    <div class="pdf-canvas-container">
+                        <canvas id="pdf-canvas" class="pdf-canvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Driver Info Panel (Sidebar) -->
+                <div class="driver-info-panel" id="driver-info-panel" style="display: none;">
+                    <div class="info-header">
+                        <h4>Driver Information</h4>
+                        <button class="btn-close" onclick="closePDF()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="info-content">
+                        <!-- Driver Avatar Section -->
+                        <div class="avatar-section">
+                            <div class="large-avatar">
+                                {% if submission.driver.profile_photo %}
+                                <img src="{{ submission.driver.profile_photo.url }}" alt="Profile">
+                                {% else %}
+                                <i class="fas fa-user"></i>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Driver Details -->
+                        <div class="driver-details-box">
+                            <h5 id="driver-name">Name</h5>
+                            <p class="text-muted mb-3" id="driver-license">License #</p>
+                            
+                            <div class="info-group">
+                                <span class="info-label">Batch:</span>
+                                <span class="info-value" id="driver-batch">-</span>
+                            </div>
+                            
+                            <div class="info-group">
+                                <span class="info-label">Phone:</span>
+                                <span class="info-value" id="driver-phone">-</span>
+                            </div>
+                            
+                            <div class="info-group">
+                                <span class="info-label">Company:</span>
+                                <span class="info-value" id="driver-company">-</span>
+                            </div>
+                        </div>
+                        
+                        <!-- Exam Results Section -->
+                        <div class="exam-results-box">
+                            <h6 class="section-title">
+                                <i class="fas fa-chart-bar"></i> Exam Results
+                            </h6>
+                            
+                            <div class="result-summary">
+                                <div class="exam-title-display" id="exam-title-display">Exam Name</div>
+                                
+                                <div class="score-display-large">
+                                    <div class="circular-score" id="circular-score">
+                                        <div class="score-number" id="score-number">0</div>
+                                        <div class="score-total" id="score-total">/0</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="percentage-display">
+                                    <div class="percentage-circle" id="percentage-circle">
+                                        <span id="percentage-value">0%</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="mark-legend">
+                                    <p class="legend-title">Mark Legend:</p>
+                                    <div class="legend-items">
+                                        <div class="legend-item">
+                                            <span class="mark-symbol correct">✓</span>
+                                            <span>Correct</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="mark-symbol incorrect">✗</span>
+                                            <span>Incorrect</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="result-stats">
+                                <div class="stat-row">
+                                    <span class="stat-label">Total Questions:</span>
+                                    <span class="stat-value" id="total-questions">0</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-label">Correct Answers:</span>
+                                    <span class="stat-value text-success" id="correct-answers">0</span>
+                                </div>
+                                <div class="stat-row">
+                                    <span class="stat-label">Incorrect Answers:</span>
+                                    <span class="stat-value text-danger" id="incorrect-answers">0</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="action-buttons-panel">
+                            <a id="view-detailed-btn" class="btn btn-primary-full" target="_blank">
+                                <i class="fas fa-eye"></i> View Detailed
+                            </a>
+                            <a id="download-pdf-btn" class="btn btn-secondary-full" download>
+                                <i class="fas fa-download"></i> Download PDF
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Empty State -->
+                <div class="empty-state" id="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-file-pdf"></i>
+                    </div>
+                    <h4>Select a Paper to View</h4>
+                    <p>Click on any marked exam paper from the list to view details and the PDF</p>
+                </div>
+            </div>
+        </div>
+        
+        {% else %}
+        <!-- No Results State -->
+        <div class="no-results">
+            <div class="no-results-icon">
+                <i class="fas fa-inbox"></i>
+            </div>
+            <h3>No Marked Papers</h3>
+            {% if selected_batch %}
+            <p>No marked exam papers found for <strong>{{ selected_batch.name }}</strong></p>
+            {% else %}
+            <p>Please select a batch to view marked exam papers</p>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- PDF.js Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let pdfDoc = null;
+let currentPage = 1;
+let zoomLevel = 1;
+const canvas = document.getElementById('pdf-canvas');
+const ctx = canvas ? canvas.getContext('2d') : null;
+
+// Batch selection
+document.getElementById('batch-select').addEventListener('change', function() {
+    if (this.value) {
+        window.location.href = '{% url "trainapp:exam_results_gallery" %}?batch=' + this.value;
+    } else {
+        window.location.href = '{% url "trainapp:exam_results_gallery" %}';
+    }
+});
+
+// View PDF
+function viewPDF(submissionId) {
+    const card = document.querySelector(`[data-submission-id="${submissionId}"]`);
+    const pdfUrl = card.getAttribute('data-pdf-url');
+    
+    // Update driver info
+    const driverName = card.querySelector('.driver-name').textContent;
+    const driverLicense = card.querySelector('.driver-license').textContent;
+    const examTitle = card.querySelector('.exam-title').textContent;
+    const scoreText = card.querySelector('.score-badge').textContent;
+    const [correct, total] = scoreText.split('/');
+    const percentage = card.querySelector('.percentage-text').textContent;
+    
+    document.getElementById('driver-name').textContent = driverName;
+    document.getElementById('driver-license').textContent = driverLicense;
+    document.getElementById('exam-title-display').textContent = examTitle;
+    document.getElementById('score-number').textContent = correct;
+    document.getElementById('score-total').textContent = '/' + total;
+    document.getElementById('percentage-value').textContent = percentage;
+    document.getElementById('total-questions').textContent = total;
+    document.getElementById('correct-answers').textContent = correct;
+    document.getElementById('incorrect-answers').textContent = (parseInt(total) - parseInt(correct));
+    
+    // Update buttons
+    document.getElementById('view-detailed-btn').href = `{% url 'trainapp:view_marked_submission' 0 %}`.replace('0', submissionId);
+    document.getElementById('download-pdf-btn').href = `{% url 'trainapp:download_marked_pdf' 0 %}`.replace('0', submissionId);
+    document.getElementById('pdf-download-btn').href = pdfUrl;
+    document.getElementById('pdf-download-btn').download = examTitle + '.pdf';
+    
+    // Show panels
+    document.getElementById('pdf-viewer-card').style.display = 'block';
+    document.getElementById('driver-info-panel').style.display = 'block';
+    document.getElementById('empty-state').style.display = 'none';
+    
+    // Load PDF
+    loadPDF(pdfUrl);
+    
+    // Highlight selected card
+    document.querySelectorAll('.result-card').forEach(c => c.classList.remove('active'));
+    card.classList.add('active');
+}
+
+function closePDF() {
+    document.getElementById('pdf-viewer-card').style.display = 'none';
+    document.getElementById('driver-info-panel').style.display = 'none';
+    document.getElementById('empty-state').style.display = 'block';
+    document.querySelectorAll('.result-card').forEach(c => c.classList.remove('active'));
+    
+    if (pdfDoc) {
+        pdfDoc.destroy();
+        pdfDoc = null;
+    }
+}
+
+async function loadPDF(pdfUrl) {
+    try {
+        if (pdfDoc) {
+            pdfDoc.destroy();
+        }
+        
+        pdfDoc = await pdfjsLib.getDocument(pdfUrl).promise;
+        document.getElementById('pdf-total-pages').textContent = pdfDoc.numPages;
+        currentPage = 1;
+        zoomLevel = 1;
+        document.getElementById('pdf-zoom-level').textContent = '100%';
+        renderPage(1);
+    } catch (error) {
+        console.error('Error loading PDF:', error);
+        alert('Failed to load PDF');
+    }
+}
+
+async function renderPage(pageNumber) {
+    if (!pdfDoc || !canvas) return;
+
+    try {
+        const page = await pdfDoc.getPage(pageNumber);
+        const viewport = page.getViewport({ scale: zoomLevel });
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+
+        await page.render(renderContext).promise;
+        currentPage = pageNumber;
+        document.getElementById('pdf-page-input').value = pageNumber;
+    } catch (error) {
+        console.error('Error rendering page:', error);
+    }
+}
+
+// PDF Navigation
+if (document.getElementById('pdf-prev-btn')) {
+    document.getElementById('pdf-prev-btn').addEventListener('click', () => {
+        if (currentPage > 1) renderPage(currentPage - 1);
+    });
+
+    document.getElementById('pdf-next-btn').addEventListener('click', () => {
+        if (pdfDoc && currentPage < pdfDoc.numPages) renderPage(currentPage + 1);
+    });
+
+    document.getElementById('pdf-page-input').addEventListener('change', (e) => {
+        const page = Math.max(1, Math.min(parseInt(e.target.value) || 1, pdfDoc.numPages));
+        renderPage(page);
+    });
+
+    // Zoom
+    document.getElementById('pdf-zoom-out-btn').addEventListener('click', () => {
+        zoomLevel = Math.max(0.5, zoomLevel - 0.1);
+        document.getElementById('pdf-zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+        renderPage(currentPage);
+    });
+
+    document.getElementById('pdf-zoom-in-btn').addEventListener('click', () => {
+        zoomLevel = Math.min(3, zoomLevel + 0.1);
+        document.getElementById('pdf-zoom-level').textContent = Math.round(zoomLevel * 100) + '%';
+        renderPage(currentPage);
+    });
+}
+
+function printAllResults() {
+    const printWindow = window.open('', '_blank');
+    const html = document.documentElement.outerHTML;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.print();
+}
+</script>
+
+<style>
+.results-gallery-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+    padding: 2rem;
+}
+
+.gallery-header {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+.header-top {
+    margin-bottom: 1.5rem;
+}
+
+.gallery-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0 0 0.5rem 0;
+}
+
+.gallery-subtitle {
+    color: #7f8c8d;
+    font-size: 0.95rem;
+    margin: 0;
+}
+
+.batch-selector-wrapper {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.batch-selector {
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.batch-label {
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.batch-select-input {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e0e6ed;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: white;
+    color: #2c3e50;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+.batch-select-input:hover,
+.batch-select-input:focus {
+    border-color: #3498db;
+    outline: none;
+}
+
+.quick-stats {
+    display: flex;
+    gap: 2rem;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-download,
+.btn-print {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-download {
+    background: #27ae60;
+    color: white;
+}
+
+.btn-download:hover {
+    background: #229954;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+}
+
+.btn-print {
+    background: #3498db;
+    color: white;
+}
+
+.btn-print:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+}
+
+.gallery-content {
+    flex: 1;
+}
+
+.results-layout {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr;
+    gap: 2rem;
+}
+
+.results-list-container {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.list-header h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    color: #2c3e50;
+}
+
+.count-badge {
+    background: #3498db;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.results-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.result-card {
+    background: #f8f9fa;
+    border: 2px solid #ecf0f1;
+    border-radius: 8px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.result-card:hover {
+    border-color: #3498db;
+    background: white;
+    box-shadow: 0 4px 8px rgba(52, 152, 219, 0.15);
+}
+
+.result-card.active {
+    border-color: #27ae60;
+    background: #f0fdf4;
+    box-shadow: 0 4px 8px rgba(39, 174, 96, 0.15);
+}
+
+.card-header {
+    margin-bottom: 0.75rem;
+}
+
+.driver-info-mini {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.driver-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.2rem;
+}
+
+.driver-basic {
+    flex: 1;
+}
+
+.driver-name {
+    margin: 0;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.95rem;
+}
+
+.driver-license {
+    margin: 0.25rem 0 0 0;
+    color: #7f8c8d;
+    font-size: 0.85rem;
+}
+
+.card-body {
+    margin-bottom: 0.75rem;
+}
+
+.exam-title {
+    margin: 0 0 0.75rem 0;
+    color: #2c3e50;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.score-indicator {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.score-badge {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 1rem;
+    color: white;
+    min-width: 80px;
+    text-align: center;
+}
+
+.score-pass {
+    background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+}
+
+.score-medium {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+}
+
+.score-fail {
+    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+}
+
+.percentage-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.marked-date {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 0.85rem;
+}
+
+.card-footer {
+    padding-top: 0.75rem;
+    border-top: 1px solid #ecf0f1;
+}
+
+.btn-view-pdf {
+    width: 100%;
+    padding: 0.6rem;
+    border: none;
+    background: #3498db;
+    color: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-view-pdf:hover {
+    background: #2980b9;
+}
+
+.viewer-panel {
+    display: flex;
+    flex-direction: column;
+}
+
+.pdf-viewer-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    display: flex;
+    flex-direction: column;
+    height: 80vh;
+}
+
+.driver-info-panel {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    padding: 1.5rem;
+    overflow-y: auto;
+    max-height: 80vh;
+}
+
+.pdf-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #ecf0f1;
+    border-radius: 12px 12px 0 0;
+    gap: 1rem;
+}
+
+.toolbar-left,
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toolbar-btn {
+    background: white;
+    border: 1px solid #ddd;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    color: #2c3e50;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.toolbar-btn:hover {
+    background: #e8e9f3;
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.toolbar-input {
+    width: 50px;
+    padding: 0.5rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.page-info {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    margin: 0 0.5rem;
+}
+
+.zoom-level {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    min-width: 45px;
+    text-align: center;
+}
+
+.pdf-canvas-container {
+    flex: 1;
+    overflow: auto;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    background: #e0e0e0;
+    padding: 2rem 1rem;
+}
+
+.pdf-canvas {
+    max-width: 100%;
+    height: auto;
+    background: white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.info-header h4 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.2rem;
+}
+
+.btn-close {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #7f8c8d;
+    cursor: pointer;
+}
+
+.btn-close:hover {
+    color: #e74c3c;
+}
+
+.info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.avatar-section {
+    text-align: center;
+}
+
+.large-avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: white;
+    font-size: 2.5rem;
+    overflow: hidden;
+}
+
+.large-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.driver-details-box {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.driver-details-box h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    color: #2c3e50;
+}
+
+.driver-details-box .text-muted {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.info-group {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #ecf0f1;
+    font-size: 0.9rem;
+}
+
+.info-group:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #7f8c8d;
+}
+
+.info-value {
+    color: #2c3e50;
+}
+
+.exam-results-box {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.section-title {
+    margin: 0 0 1rem 0;
+    color: #2c3e50;
+    font-size: 0.95rem;
+}
+
+.result-summary {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.exam-title-display {
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.score-display-large {
+    margin-bottom: 1rem;
+}
+
+.circular-score {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: white;
+    position: relative;
+}
+
+.score-number {
+    font-size: 1.8rem;
+    font-weight: bold;
+}
+
+.score-total {
+    font-size: 1rem;
+    margin-left: 5px;
+    opacity: 0.9;
+}
+
+.percentage-display {
+    margin-bottom: 1.5rem;
+}
+
+.percentage-circle {
+    width: 70px;
+    height: 70px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: white;
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.mark-legend {
+    margin-bottom: 1.5rem;
+}
+
+.legend-title {
+    margin: 0 0 0.75rem 0;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.85rem;
+}
+
+.legend-items {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: #7f8c8d;
+}
+
+.mark-symbol {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.mark-symbol.correct {
+    background: #d4edda;
+    color: #28a745;
+}
+
+.mark-symbol.incorrect {
+    background: #f8d7da;
+    color: #dc3545;
+}
+
+.result-stats {
+    border-top: 1px solid #ecf0f1;
+    padding-top: 1rem;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    font-size: 0.9rem;
+}
+
+.stat-row .stat-label {
+    color: #7f8c8d;
+    font-weight: 600;
+}
+
+.stat-row .stat-value {
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.action-buttons-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #ecf0f1;
+}
+
+.btn-primary-full,
+.btn-secondary-full {
+    padding: 0.75rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.btn-primary-full {
+    background: #3498db;
+    color: white;
+}
+
+.btn-primary-full:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.btn-secondary-full {
+    background: #95a5a6;
+    color: white;
+}
+
+.btn-secondary-full:hover {
+    background: #7f8c8d;
+    transform: translateY(-2px);
+}
+
+.empty-state {
+    background: white;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+.empty-icon {
+    font-size: 3rem;
+    color: #bdc3c7;
+    margin-bottom: 1rem;
+}
+
+.empty-state h4 {
+    margin: 0 0 0.5rem 0;
+    color: #2c3e50;
+}
+
+.empty-state p {
+    margin: 0;
+    color: #7f8c8d;
+}
+
+.no-results {
+    background: white;
+    border-radius: 12px;
+    padding: 3rem 2rem;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+}
+
+.no-results-icon {
+    font-size: 3rem;
+    color: #bdc3c7;
+    margin-bottom: 1rem;
+}
+
+.no-results h3 {
+    margin: 0 0 0.5rem 0;
+    color: #2c3e50;
+}
+
+.no-results p {
+    margin: 0;
+    color: #7f8c8d;
+}
+
+/* Scrollbar Styling */
+.results-list-container::-webkit-scrollbar,
+.driver-info-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+.results-list-container::-webkit-scrollbar-track,
+.driver-info-panel::-webkit-scrollbar-track {
+    background: #f0f0f0;
+}
+
+.results-list-container::-webkit-scrollbar-thumb,
+.driver-info-panel::-webkit-scrollbar-thumb {
+    background: #bdc3c7;
+    border-radius: 3px;
+}
+
+.results-list-container::-webkit-scrollbar-thumb:hover,
+.driver-info-panel::-webkit-scrollbar-thumb:hover {
+    background: #95a5a6;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .results-layout {
+        grid-template-columns: 1fr;
+    }
+    
+    .pdf-viewer-card,
+    .driver-info-panel {
+        max-height: 60vh;
+    }
+}
+
+@media (max-width: 768px) {
+    .results-gallery-container {
+        padding: 1rem;
+    }
+    
+    .gallery-header {
+        padding: 1rem;
+    }
+    
+    .batch-selector-wrapper {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .batch-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .quick-stats {
+        width: 100%;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .results-list-container,
+    .pdf-viewer-card,
+    .driver-info-panel {
+        max-height: none;
+        height: auto;
+        margin-bottom: 1rem;
+    }
+    
+    .gallery-title {
+        font-size: 1.5rem;
+    }
+}
+</style>
+
+{% endblock %}

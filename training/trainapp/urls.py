@@ -1,7 +1,8 @@
 from django.urls import path
 from . import views
 from .marking_views import (
-    mark_exam_paper, download_marked_pdf, driver_submissions, view_marked_submission, fast_mark_exam
+    mark_exam_paper, download_marked_pdf, driver_submissions, view_marked_submission, fast_mark_exam,
+    exam_results_gallery, download_batch_marked_pdfs, exam_analysis_dashboard
 )
 
 app_name = 'trainapp'
@@ -50,6 +51,15 @@ urlpatterns = [
     path('exams/<int:exam_id>/results/print/', views.exam_results_print, name='exam_results_print'),
     path('exams/<int:exam_id>/score/<int:driver_id>/', views.score_submission, name='score_submission'),
     path('api/score-submission/', views.api_save_score, name='api_save_score'),
+
+    # Exam Results Gallery
+    path('results-gallery/', exam_results_gallery, name='exam_results_gallery'),
+    path('results-gallery/<int:batch_id>/', exam_results_gallery, name='exam_results_gallery_batch'),
+    path('results-gallery/<int:batch_id>/download/', download_batch_marked_pdfs, name='download_batch_marked_pdfs'),
+
+    # Exam Analysis & KPI Dashboard
+    path('analytics/', exam_analysis_dashboard, name='exam_analysis_dashboard'),
+    path('analytics/<int:batch_id>/', exam_analysis_dashboard, name='exam_analysis_dashboard_batch'),
 
     # Printable / Embedded
     path('exams/<int:exam_id>/paper/<int:driver_id>/', views.printable_paper, name='printable_paper'),
