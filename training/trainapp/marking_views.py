@@ -407,6 +407,9 @@ def exam_results_gallery(request, batch_id=None):
     """
     batches = Batch.objects.all().order_by('name')
 
+    # Support both URL path parameter and query parameter for batch selection
+    batch_id = batch_id or request.GET.get('batch')
+
     if batch_id:
         batch = get_object_or_404(Batch, pk=batch_id)
     else:
