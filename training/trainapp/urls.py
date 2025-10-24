@@ -52,6 +52,11 @@ urlpatterns = [
     path('exams/<int:exam_id>/score/<int:driver_id>/', views.score_submission, name='score_submission'),
     path('api/score-submission/', views.api_save_score, name='api_save_score'),
 
+    # Exam Results Gallery
+    path('results-gallery/', exam_results_gallery, name='exam_results_gallery'),
+    path('results-gallery/<int:batch_id>/', exam_results_gallery, name='exam_results_gallery_batch'),
+    path('results-gallery/<int:batch_id>/download/', download_batch_marked_pdfs, name='download_batch_marked_pdfs'),
+
     # Printable / Embedded
     path('exams/<int:exam_id>/paper/<int:driver_id>/', views.printable_paper, name='printable_paper'),
 ]
