@@ -393,3 +393,95 @@ def fast_mark_exam(request, exam_id: int, driver_id: int):
         }
 
         return render(request, 'exams/fast_mark_exam.html', context)
+
+
+@staff_member_required
+def exam_results_gallery(request, batch_id=None):
+    """
+    Advanced exam results viewing platform with batch selection.
+    Display all marked exam papers for a selected batch with:
+    - Batch filtering
+    - PDF viewer with driver info popup
+    - Bulk download functionality
+    - Print support
+    """
+    batches = Batch.objects.all().order_by('name')
+
+    if batch_id:
+        batch = get_object_or_404(Batch, pk=batch_id)
+    else:
+        batch = batches.first()
+
+    marked_submissions = []
+
+    if batch:
+        drivers = batch.drivers.all()
+        for driver in drivers:
+            submissions = Submission.objects.filter(
+                driver=driver
+            ).select_related('exam', 'graded_by').prefetch_related('question_answers')
+
+            for submission in submissions:
+                marked_sub = MarkedExamSubmission.objects.filter(submission=submission).first()
+
+                if marked_sub and marked_sub.is_generated and marked_sub.marked_pdf_file:
+                    question_count = submission.question_answers.count()
+                    correct_count = submission.question_answers.filter(is_correct=True).count()
+
+                    marked_submissions.append({
+                        'id': submission.id,
+                        'driver': driver,
+                        'exam': submission.exam,
+                        'submission': submission,
+                        'marked_submission': marked_sub,
+                        'total_questions': marked_sub.total_questions,
+                        'total_correct': marked_sub.total_correct,
+                        'percentage': marked_sub.get_percentage_score(),
+                        'graded_at': submission.graded_at,
+                        'can_view': True,
+                        'pdf_url': marked_sub.marked_pdf_file.url if marked_sub.marked_pdf_file else '',
+                    })
+
+        marked_submissions.sort(key=lambda x: x['graded_at'] or timezone.now(), reverse=True)
+
+    context = {
+        'batches': batches,
+        'selected_batch': batch,
+        'marked_submissions': marked_submissions,
+        'total_papers': len(marked_submissions),
+        'average_percentage': (sum(m['percentage'] for m in marked_submissions) / len(marked_submissions)) if marked_submissions else 0,
+    }
+
+    return render(request, 'exams/exam_results_gallery.html', context)
+
+
+@staff_member_required
+def download_batch_marked_pdfs(request, batch_id):
+    """
+    Download all marked PDFs for a batch as a ZIP file.
+    """
+    batch = get_object_or_404(Batch, pk=batch_id)
+    drivers = batch.drivers.all()
+
+    zip_buffer = BytesIO()
+
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for driver in drivers:
+            submissions = Submission.objects.filter(driver=driver).select_related('exam')
+
+            for submission in submissions:
+                marked_sub = MarkedExamSubmission.objects.filter(submission=submission).first()
+
+                if marked_sub and marked_sub.is_generated and marked_sub.marked_pdf_file:
+                    pdf_file_path = marked_sub.marked_pdf_file.path
+
+                    if os.path.exists(pdf_file_path):
+                        # Create organized folder structure: Batch/Exam/Driver_Exam.pdf
+                        arcname = f"{batch.name}/{submission.exam.title}/{driver.first_name}_{driver.last_name}_{submission.exam.title}.pdf"
+                        zip_file.write(pdf_file_path, arcname=arcname)
+
+    zip_buffer.seek(0)
+    response = FileResponse(zip_buffer, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="marked_exams_{batch.name}_{timezone.now().strftime("%Y%m%d")}.zip"'
+
+    return response
